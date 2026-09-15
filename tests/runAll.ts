@@ -27,6 +27,14 @@ import { testRealDatasetIntegration } from './datasets/realDatasetService.test';
 import { testReplayAndCounterfactual } from './simulation/replayAndCounterfactual.test';
 import { testEmotionEngine } from './nlp/emotionEngine.test';
 import { testPhaseEProductionHardening } from './e2e/phaseE.test';
+import { testForecastEngine } from './forecasting/forecastEngine.test';
+import { testGraphLearning } from './graphLearning/graphLearning.test';
+import { testCollaborationLayer } from './collaboration/collaboration.test';
+import { testEvidenceDossier } from './explainability/evidenceDossier.test';
+import { testContinuousEvaluator } from './validation/continuousEvaluator.test';
+import { testInterventionOptimizer } from './optimization/interventionOptimizer.test';
+import { testDomainRegistry } from './domains/domainRegistry.test';
+import { testPublicationPipeline } from './research/publicationPipeline.test';
 
 console.log('========================================================');
 console.log('  SOCIAL GRAVITY - MASTER SYSTEM TEST SUITE');
@@ -70,6 +78,30 @@ async function run() {
 
     console.log('\n--- SOCIAL GRAVITY PHASE E: PRODUCTION HARDENING & LIVE INTELLIGENCE ---');
     await testPhaseEProductionHardening();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: REAL-TIME FORECAST ENGINE ---');
+    testForecastEngine();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: GRAPH LEARNING & NODE2VEC ---');
+    testGraphLearning();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: ANALYST COLLABORATION LAYER ---');
+    testCollaborationLayer();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: EXPLAINABLE INTELLIGENCE DOSSIER ---');
+    testEvidenceDossier();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: CONTINUOUS FORECAST VALIDATION ---');
+    testContinuousEvaluator();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: INTERVENTION OPTIMIZER ---');
+    testInterventionOptimizer();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: MULTI-DOMAIN EXPANSION ---');
+    testDomainRegistry();
+
+    console.log('\n--- SOCIAL GRAVITY V2.0: RESEARCH PUBLICATION PIPELINE ---');
+    testPublicationPipeline();
 
     console.log('\n========================================================');
     console.log('  ALL SOCIETY, PSYCHOLOGY, SIMULATION, AI, GRAPH & PRODUCTION TESTS PASSED (100%)');

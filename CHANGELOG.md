@@ -4,6 +4,22 @@ All notable changes to Social Gravity are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta] - 2026-09-15
+
+### Added
+- **Milestone M1: Real-Time Forecast Engine (`src/forecasting/`)**: Multi-step rolling forecast horizon, non-parametric probabilistic confidence intervals (5th, 50th, 95th percentiles), early-warning cross-community contagion statements, and uncertainty decomposition (aleatoric vs epistemic).
+- **Milestone M2: Graph Learning & Node2Vec (`src/graphLearning/`)**: On-device 2nd-order biased random walks with Skip-Gram Negative Sampling (SGNS) trained via SGD in pure TypeScript; +5.1% hybrid diffusion accuracy gain on modular structures.
+- **Milestone M3: Analyst Collaboration Layer (`src/collaboration/`)**: Multi-analyst investigation manager with replay bookmarks, node annotations, pinned evidence spikes, threaded review comments, and offline JSON package export/import.
+- **Milestone M4: Explainable Intelligence Dossier Engine (`src/explainability/`)**: Audit-grade dossiers linking triggering nodes, cross-community bridge crossings, affective GoEmotions drivers, causal propagation paths, and cryptographic snapshot digests.
+- **Milestone M5: Continuous Forecast Validation (`src/validation/`)**: Temporal holdout evaluation pipeline (hiding future observations) against ground truth; persistent benchmark database tracking MAE, RMSE, Brier calibration, and forecast drift.
+- **Milestone M6: Automated Intervention Optimization (`src/optimization/`)**: Pareto frontier search for lowest operational cost and highest containment efficiency; automated non-dominated strategy selection.
+- **Milestone M7: Multi-Domain Expansion (`src/domains/`)**: Modular adapters for Financial Panic, Cybersecurity Incidents, Emergency Evacuation, Enterprise Rumors, and Supply Chain Disruption.
+- **Milestone M8: Research Publication Pipeline (`src/research/`)**: Automated reproducibility manifests (SplitMix32 seeds, SHA-256 dataset checksums) and ACM/IEEE LaTeX table exporters for ICWSM / WebConf / AAAI.
+
+### Changed
+- Elevated Social Gravity from an epidemiological simulator into a full-stack Decision Intelligence Operating System.
+- Preserved 100% deterministic replayability and client-side zero-telemetry privacy guarantees.
+
 ## [1.0.0-alpha] - 2026-09-15
 
 ### Added

@@ -1,0 +1,99 @@
+================================================================================
+SOCIAL GRAVITY — MIGRATION GUIDE: v1.0.0-alpha to v2.0.0-beta
+Architecture Evolution & API Upgrades for Decision Intelligence Workstations
+================================================================================
+
+1. OVERVIEW
+-----------
+Social Gravity v2.0.0-beta represents a major paradigm shift:
+- v1.0.0-alpha: Retrospective epidemiological simulation & replay.
+- v2.0.0-beta: Forward-looking Decision Intelligence Operating System with
+  probabilistic rolling forecasts, Node2Vec graph representations, multi-analyst
+  investigations, automated Pareto intervention optimization, and multi-domain adapters.
+
+All changes maintain 100% backward compatibility with v1.0.0-alpha replay snapshots
+and dataset ingestion formats.
+
+
+2. KEY NEW SUBSYSTEMS & APIS
+----------------------------
+
+[1] Real-Time Forecast Engine (`src/forecasting/`)
+    - Before (v1.0): Simulation stepped tick-by-tick; no forward projection.
+    - After (v2.0):
+      ```typescript
+      import { ForecastEngine } from './forecasting';
+      const forecast = ForecastEngine.generateForecast(engine, 8, 20);
+      console.log(forecast.earlyWarning.narrativeAlert);
+      // "78% probability of cross-community spread within 6 ticks."
+      ```
+
+[2] Graph Learning Upgrade (`src/graphLearning/`)
+    - Before (v1.0): Pure heuristic Asch conformity & epistemic trust rules.
+    - After (v2.0): Optional on-device Node2Vec embeddings:
+      ```typescript
+      import { Node2VecEngine, HybridDiffusionPredictor } from './graphLearning';
+      const embeddingResult = new Node2VecEngine().train(society);
+      const benchmark = HybridDiffusionPredictor.runBenchmark(society);
+      ```
+
+[3] Analyst Collaboration Layer (`src/collaboration/`)
+    - Before (v1.0): Single-user dashboard session with local state.
+    - After (v2.0): Multi-analyst investigations with pinned evidence:
+      ```typescript
+      import { InvestigationManager } from './collaboration';
+      const manager = new InvestigationManager({ title: 'SVB Liquidity Audit' });
+      manager.addBookmark(3, 'Breakout Point', 'Breached executive cluster', 'Analyst-1');
+      const exportedJson = manager.exportPackage();
+      ```
+
+[4] Explainable Intelligence Dossier (`src/explainability/`)
+    - Before (v1.0): Simple text alert cards.
+    - After (v2.0): Full evidence dossiers linking triggering nodes, causal chains,
+      GoEmotions affective vectors, and cryptographic snapshot digests:
+      ```typescript
+      import { EvidenceDossierEngine } from './explainability';
+      const dossier = EvidenceDossierEngine.compileDossier(society, simState);
+      ```
+
+[5] Continuous Forecast Validation (`src/validation/`)
+    - Before (v1.0): Static post-hoc benchmark evaluation.
+    - After (v2.0): Temporal holdout testing with persistent benchmark database:
+      ```typescript
+      import { ContinuousEvaluator } from './validation';
+      const result = ContinuousEvaluator.evaluateDatasetHoldout(society, signal, 6, 2);
+      ```
+
+[6] Automated Intervention Optimizer (`src/optimization/`)
+    - Before (v1.0): Predefined fixed interventions.
+    - After (v2.0): Automated Pareto frontier search evaluating Cost vs Containment:
+      ```typescript
+      import { InterventionOptimizer } from './optimization';
+      const report = InterventionOptimizer.optimize(engine, 8);
+      console.table(report.comparisonTable);
+      ```
+
+[7] Multi-Domain Expansion (`src/domains/`)
+    - Before (v1.0): Social media rumors only.
+    - After (v2.0): Specialized domain adapters:
+      - `financial_panic`
+      - `cybersecurity_incident`
+      - `emergency_communication`
+      - `organizational_rumor`
+      - `supply_chain_disruption`
+
+[8] Research Publication Pipeline (`src/research/`)
+    - Before (v1.0): Manual reporting.
+    - After (v2.0): Programmatic LaTeX table and reproducibility manifest generation:
+      ```typescript
+      import { PublicationPipeline } from './research';
+      const manifest = PublicationPipeline.generateManifest();
+      const latex = PublicationPipeline.generatePredictionLatexTable();
+      ```
+
+
+3. BREAKING CHANGES & DEPRECATIONS
+----------------------------------
+- None: All legacy functions in `RumorEngine` and `DynamicGraph` remain fully functional.
+- All new capabilities are additive and modular.
+================================================================================

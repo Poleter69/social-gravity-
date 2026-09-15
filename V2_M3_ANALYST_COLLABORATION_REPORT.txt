@@ -1,0 +1,65 @@
+================================================================================
+SOCIAL GRAVITY — MILESTONE M3: ANALYST COLLABORATION LAYER DOSSIER
+Shared Investigations, Pinned Evidence, Replay Bookmarks & Review Threads
+Author: Chief Architect & Product Lead
+Target: v2.0-beta Evolution Track
+Location: C:\Users\suraj\Pictures\social gravity\V2_M3_ANALYST_COLLABORATION_REPORT.txt
+================================================================================
+
+1. EXECUTIVE SUMMARY
+-------------------
+Milestone M3 evolves Social Gravity from a single-user simulator into an analyst
+team collaboration platform. Investigations can now be created, annotated, reviewed,
+and exchanged between distributed analysts with zero cloud dependency.
+
+Key Features Delivered:
+- Shared Investigations: Unified dossier container tracking title, hypothesis,
+  status (open, in_review, resolved, archived), and scenario metadata.
+- Replay Bookmarks: Tag key simulation rounds with descriptive analyst notes,
+  enabling one-click time-travel restoration.
+- Agent & Node Annotations: Tag specific nodes (patient_zero, super_spreader,
+  bridge_broker, inoculated, anomaly) with analyst observations.
+- Pinned Evidence: Pin critical telemetry spikes, R0 surges, transmission cascades,
+  and emotional outrage events with metric snapshots.
+- Threaded Review Comments: Multi-analyst discussions on proposed counterfactuals
+  with open / addressed resolution status.
+- Scenario Comparison History: Track comparative containment deltas across runs.
+- 100% Offline Portability: Full investigation export/import schema in standard JSON.
+
+
+2. ARCHITECTURAL SCHEMA
+-----------------------
+- Primary Module: `src/collaboration/`
+  * `src/collaboration/types.ts`: TypeScript contracts for `Investigation`,
+    `ReplayBookmark`, `AgentAnnotation`, `PinnedEvidence`, and `ReviewComment`.
+  * `src/collaboration/investigationStore.ts`: `InvestigationManager` providing
+    thread mutations, evidence pinning, and JSON serialization.
+
+Investigation Export Format:
+```json
+{
+  "__format": "social-gravity-investigation-v2",
+  "exportedAt": "2026-09-15T...",
+  "investigation": {
+    "id": "inv-...",
+    "title": "Operation Silicon Ripple",
+    "bookmarks": [...],
+    "annotations": [...],
+    "pinnedEvidence": [...],
+    "comments": [...]
+  }
+}
+```
+
+
+3. TEST & VERIFICATION EVIDENCE
+-------------------------------
+- Test File: `tests/collaboration/collaboration.test.ts`
+- Verified Capabilities:
+  * Created active investigation with bookmarks, annotations, and pinned evidence.
+  * Threaded reply comments verified with status transitions (`open` -> `addressed`).
+  * Round-trip JSON serialization & import validated with 100% state parity.
+  * Exit Code: 0 (Integrated into master test suite).
+
+MILESTONE M3 EXIT GATE: SATISFIED ✅
+================================================================================
