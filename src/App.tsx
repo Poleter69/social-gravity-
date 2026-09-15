@@ -28,9 +28,18 @@ import {
   Sparkles,
   GitFork,
   History,
-  Heart
+  Heart,
+  FolderHeart,
+  Download,
+  Command
 } from 'lucide-react';
 import { DiscoveryEngine, DiscoveryReport, DiscoveryDashboard, AnalystReplayDashboard, EmotionalIntelligenceDashboard } from './discovery';
+import { ExportModal } from './exports/components/ExportModal';
+import { ScenarioModal } from './scenarios/components/ScenarioModal';
+import { Scenario } from './scenarios/types';
+import { ExplainabilityModal } from './explainability/components/ExplainabilityModal';
+import { alertExplainer, AlertExplanation } from './explainability';
+import { CommandPalette, PaletteCommand, NotificationCenter, emitNotification, useKeyboardShortcuts } from './ui';
 import { societyGenerator } from './society/generators/societyGenerator';
 import { SocietyArchetype, Community } from './society/types/community';
 import { Society } from './society/types/society';
@@ -78,6 +87,13 @@ export const App: React.FC = () => {
   const [isCounterfactualOpen, setIsCounterfactualOpen] = useState<boolean>(false);
   const [counterfactualResult, setCounterfactualResult] = useState<CounterfactualComparisonResult | null>(null);
   const wasPlayingBeforeDrag = React.useRef<boolean>(false);
+
+  // Phase E: Modals & Analyst Tools State
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [isScenarioModalOpen, setIsScenarioModalOpen] = useState<boolean>(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [isExplainabilityOpen, setIsExplainabilityOpen] = useState<boolean>(false);
+  const [activeAlertExplanation, setActiveAlertExplanation] = useState<AlertExplanation | null>(null);
 
   // Discovery Engine state
   const [discoveryReport, setDiscoveryReport] = useState<DiscoveryReport | null>(null);
@@ -280,6 +296,155 @@ export const App: React.FC = () => {
     }
   };
 
+  // --- PHASE E: ANALYST WORKFLOW & INVESTIGATION HANDLERS ---
+  const handleLoadScenario = (scenario: Scenario) => {
+    setActiveSociety(scenario.society);
+    if (scenario.rumor) {
+      const eng = new RumorEngine(scenario.society, { maxRounds: 40, seed: 42 });
+      eng.start(scenario.rumor, scenario.patientZeroIds);
+      eng.goToRound(scenario.currentRound);
+      setEngine(eng);
+      setSimState(eng.getState());
+    }
+    setDiscoveryReport(scenario.discoveryReport);
+    setIsPlaying(false);
+  };
+
+  const handleOpenAlertExplanation = (title: string) => {
+    if (!simState) return;
+    const exp = alertExplainer.explain(
+      activeSociety,
+      simState,
+      simState.telemetryHistory,
+      discoveryReport,
+      title
+    );
+    setActiveAlertExplanation(exp);
+    setIsExplainabilityOpen(true);
+  };
+
+  const paletteCommands: PaletteCommand[] = [
+    {
+      id: 'play-pause',
+      title: isPlaying ? 'Pause Simulation' : 'Play / Step Simulation',
+      category: 'Simulation',
+      icon: isPlaying ? <Pause className="w-4 h-4 text-amber-400" /> : <Play className="w-4 h-4 text-emerald-400" />,
+      shortcut: 'Space',
+      action: () => handleTogglePlay(),
+    },
+    {
+      id: 'step-forward',
+      title: 'Step Simulation Forward (+1 Round)',
+      category: 'Simulation',
+      icon: <FastForward className="w-4 h-4 text-cyan-400" />,
+      shortcut: '→',
+      action: () => handleStepSimulation(),
+    },
+    {
+      id: 'reset-sim',
+      title: 'Reset Simulation to Round 0',
+      category: 'Simulation',
+      icon: <RotateCcw className="w-4 h-4 text-slate-400" />,
+      action: () => handleResetSimulation(),
+    },
+    {
+      id: 'open-export',
+      title: 'Open Analyst Report Center (PDF, CSV, JSON)',
+      category: 'Export',
+      icon: <Download className="w-4 h-4 text-purple-400" />,
+      shortcut: 'Ctrl+E',
+      action: () => setIsExportModalOpen(true),
+    },
+    {
+      id: 'open-scenarios',
+      title: 'Open Scenario Investigations Catalog',
+      category: 'Scenarios',
+      icon: <FolderHeart className="w-4 h-4 text-blue-400" />,
+      shortcut: 'Ctrl+S',
+      action: () => setIsScenarioModalOpen(true),
+    },
+    {
+      id: 'open-datasets',
+      title: 'Load Real Dataset (Reddit / Facebook SNAP)',
+      category: 'Datasets',
+      icon: <Database className="w-4 h-4 text-emerald-400" />,
+      action: () => setIsDatasetModalOpen(true),
+    },
+    {
+      id: 'counterfactual',
+      title: 'Open Counterfactual Branching Sandbox',
+      category: 'Simulation',
+      icon: <GitFork className="w-4 h-4 text-purple-400" />,
+      action: () => handleLaunchCounterfactual(),
+    },
+    {
+      id: 'tab-topology',
+      title: 'Navigate to Topology Canvas',
+      category: 'Navigation',
+      icon: <Network className="w-4 h-4 text-cyan-400" />,
+      action: () => setActiveTab('topology'),
+    },
+    {
+      id: 'tab-replay',
+      title: 'Navigate to Analyst Replay Dashboard',
+      category: 'Navigation',
+      icon: <History className="w-4 h-4 text-purple-400" />,
+      action: () => setActiveTab('replay'),
+    },
+    {
+      id: 'tab-emotion',
+      title: 'Navigate to Emotional Intelligence Heatmap',
+      category: 'Navigation',
+      icon: <Heart className="w-4 h-4 text-pink-400" />,
+      action: () => setActiveTab('emotion'),
+    },
+    {
+      id: 'tab-discovery',
+      title: 'Navigate to AI Discovery Intelligence',
+      category: 'Navigation',
+      icon: <Sparkles className="w-4 h-4 text-emerald-400" />,
+      action: () => setActiveTab('discovery'),
+    },
+    {
+      id: 'explain-alert',
+      title: 'Explain Epidemic Threat Alert',
+      category: 'Simulation',
+      icon: <ShieldAlert className="w-4 h-4 text-amber-400" />,
+      action: () => handleOpenAlertExplanation('Epidemic Cascade Progression Alert'),
+    },
+  ];
+
+  useKeyboardShortcuts([
+    {
+      key: ' ',
+      description: 'Play/Pause simulation',
+      action: () => handleTogglePlay(),
+    },
+    {
+      key: 'ArrowRight',
+      description: 'Step forward',
+      action: () => handleStepSimulation(),
+    },
+    {
+      key: 'e',
+      ctrl: true,
+      description: 'Open Export Report Center',
+      action: () => setIsExportModalOpen(true),
+    },
+    {
+      key: 's',
+      ctrl: true,
+      description: 'Open Scenarios Catalog',
+      action: () => setIsScenarioModalOpen(true),
+    },
+    {
+      key: 'k',
+      ctrl: true,
+      description: 'Open Command Palette',
+      action: () => setIsCommandPaletteOpen(true),
+    },
+  ]);
+
   const handleResetSimulation = () => {
     if (engine) {
       engine.reset();
@@ -453,6 +618,31 @@ export const App: React.FC = () => {
               <span>{copied ? 'Copied' : 'Export JSON'}</span>
             </button>
             <button
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-gravity-800 hover:bg-gravity-700 border border-gravity-700 text-xs font-mono text-slate-200 transition-colors"
+              title="Open Analyst Command Palette (Ctrl+K)"
+            >
+              <Command className="h-3.5 w-3.5 text-cyan-400" />
+              <span>Commands</span>
+              <kbd className="text-[9px] px-1 py-0.2 rounded bg-gravity-900 border border-gravity-700 text-slate-400">⌘K</kbd>
+            </button>
+            <button
+              onClick={() => setIsScenarioModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-blue-950/60 hover:bg-blue-900/80 border border-blue-500/50 text-xs font-mono text-blue-300 transition-all shadow-glow-blue cursor-pointer"
+              title="Save, load, and duplicate analyst scenario investigations (Ctrl+S)"
+            >
+              <FolderHeart className="h-3.5 w-3.5 text-blue-400" />
+              <span>Scenarios</span>
+            </button>
+            <button
+              onClick={() => setIsExportModalOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/50 text-xs font-mono text-purple-300 transition-all shadow-glow-purple cursor-pointer"
+              title="Export PDF Briefing, CSV Data Tables, or Replay JSON (Ctrl+E)"
+            >
+              <Download className="h-3.5 w-3.5 text-purple-400" />
+              <span>Reports</span>
+            </button>
+            <button
               onClick={() => setIsDatasetModalOpen(true)}
               className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-xs font-mono text-emerald-300 transition-all shadow-glow-emerald cursor-pointer"
               title="Load real-world Reddit conversation trees or SNAP Facebook ego networks"
@@ -460,6 +650,7 @@ export const App: React.FC = () => {
               <Database className="h-3.5 w-3.5 text-emerald-400" />
               <span>Load Real Dataset</span>
             </button>
+            <NotificationCenter />
           </div>
         </div>
 
@@ -1285,6 +1476,68 @@ export const App: React.FC = () => {
         onClose={() => setIsCounterfactualOpen(false)}
         result={counterfactualResult}
         onApplyBranch={handleApplyCounterfactualBranch}
+      />
+
+      {/* Export Report Center Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        society={activeSociety}
+        simState={
+          simState || {
+            status: 'idle',
+            currentRound: 0,
+            activeRumor: null,
+            activeDebunk: null,
+            patientZeroIds: [],
+            agentStates: new Map(),
+            infectionParents: new Map(),
+            telemetryHistory: [],
+            recentTransmissions: [],
+          }
+        }
+        telemetryHistory={simState ? simState.telemetryHistory : []}
+        discoveryReport={discoveryReport}
+        onNotify={(n) => emitNotification({ ...n, autoClose: 5000 })}
+      />
+
+      {/* Scenario Catalog Modal */}
+      <ScenarioModal
+        isOpen={isScenarioModalOpen}
+        onClose={() => setIsScenarioModalOpen(false)}
+        society={activeSociety}
+        simState={
+          simState || {
+            status: 'idle',
+            currentRound: 0,
+            activeRumor: null,
+            activeDebunk: null,
+            patientZeroIds: [],
+            agentStates: new Map(),
+            infectionParents: new Map(),
+            telemetryHistory: [],
+            recentTransmissions: [],
+          }
+        }
+        telemetryHistory={simState ? simState.telemetryHistory : []}
+        discoveryReport={discoveryReport}
+        rumor={simState?.activeRumor || null}
+        onLoadScenario={handleLoadScenario}
+        onNotify={(n) => emitNotification({ ...n, autoClose: 5000 })}
+      />
+
+      {/* Explainability Causal Diagnostic Modal */}
+      <ExplainabilityModal
+        isOpen={isExplainabilityOpen}
+        onClose={() => setIsExplainabilityOpen(false)}
+        explanation={activeAlertExplanation}
+      />
+
+      {/* Analyst Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        commands={paletteCommands}
       />
     </div>
   );

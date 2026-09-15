@@ -44,6 +44,8 @@ export interface RawRedditSubmission {
   comments?: RawRedditComment[];
 }
 
+import { EmotionProfile } from '../../../nlp/types';
+
 export interface EmotionalPayload {
   cleanedText: string;
   sentiment: {
@@ -84,6 +86,7 @@ export interface EmotionalPayload {
     surprise?: number;
     neutral?: number;
   };
+  profile?: EmotionProfile;
   embeddings?: number[]; // Vector embeddings placeholder
 }
 

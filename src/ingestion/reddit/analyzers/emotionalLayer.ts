@@ -7,6 +7,7 @@
  */
 
 import { EmotionalPayload } from '../parsers/redditTypes';
+import { EmotionEngine } from '../../../nlp/emotionEngine';
 
 export class EmotionalLayer {
   public static readonly GO_EMOTIONS = [
@@ -97,27 +98,15 @@ export class EmotionalLayer {
     const cleanedText = this.cleanText(rawText);
     const sentiment = this.analyzeSentiment(cleanedText);
 
-    // Initialize GoEmotions placeholder vector
-    const emotions: EmotionalPayload['emotions'] = {};
-    for (const emo of this.GO_EMOTIONS) {
-      emotions[emo] = 0;
-    }
-
-    // Heuristic baseline assignment based on sentiment
-    if (sentiment.compound > 0.3) {
-      emotions.approval = 0.5;
-      emotions.optimism = 0.4;
-    } else if (sentiment.compound < -0.3) {
-      emotions.disapproval = 0.5;
-      emotions.annoyance = 0.4;
-    } else {
-      emotions.neutral = 0.8;
-    }
+    // Real GoEmotions multi-dimensional inference
+    const profile = EmotionEngine.getInstance().predictSync(cleanedText);
+    const emotions: EmotionalPayload['emotions'] = { ...profile.emotionVector };
 
     return {
       cleanedText,
       sentiment,
       emotions,
+      profile,
       embeddings: [], // Ready for future transformer embedding vectors
     };
   }

@@ -26,6 +26,7 @@ import { runRedditAdapterTests } from './ingestion/reddit/redditAdapter.test';
 import { testRealDatasetIntegration } from './datasets/realDatasetService.test';
 import { testReplayAndCounterfactual } from './simulation/replayAndCounterfactual.test';
 import { testEmotionEngine } from './nlp/emotionEngine.test';
+import { testPhaseEProductionHardening } from './e2e/phaseE.test';
 
 console.log('========================================================');
 console.log('  SOCIAL GRAVITY - MASTER SYSTEM TEST SUITE');
@@ -67,8 +68,11 @@ async function run() {
     console.log('\n--- SOCIAL GRAVITY PHASE D: REAL EMOTION INTELLIGENCE (GoEmotions) ---');
     await testEmotionEngine();
 
+    console.log('\n--- SOCIAL GRAVITY PHASE E: PRODUCTION HARDENING & LIVE INTELLIGENCE ---');
+    await testPhaseEProductionHardening();
+
     console.log('\n========================================================');
-    console.log('  ALL SOCIETY, PSYCHOLOGY, SIMULATION, AI, V2 GRAPH & EMOTION TESTS PASSED (100%)');
+    console.log('  ALL SOCIETY, PSYCHOLOGY, SIMULATION, AI, GRAPH & PRODUCTION TESTS PASSED (100%)');
     console.log('========================================================');
   } catch (error) {
     console.error('\n❌ Test Suite Failed with error:', error);
