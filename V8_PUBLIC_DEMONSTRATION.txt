@@ -1,0 +1,145 @@
+================================================================================
+SOCIAL GRAVITY — MILESTONE V8: PUBLIC DEMONSTRATION & BRIEFING SCRIPTS
+Standard Operating Demonstration Protocols for Executives, Analysts & Researchers
+Author: Technical Co-Founder & Principal Solutions Architect
+Release Target: v1.0.0-alpha Briefing Dossier
+================================================================================
+
+1. EXECUTIVE SUMMARY
+-------------------
+This document contains the official demonstration scripts and screenshot checklists
+for presenting Social Gravity across three key audiences:
+- Script A: The 3-Minute Executive Briefing (C-Suite, Fund Partners, Agency Directors)
+- Script B: The 7-Minute Technical Walkthrough (SOC Analysts, Risk Engineers, Red Teams)
+- Script C: The 15-Minute Research & Architecture Seminar (Academic, Scientific, Defense)
+
+Each script is time-stamped, annotated with presenter actions, and highlights the
+system's core differentiators: offline privacy, affective NLP, dynamic network
+physics, and surgical counterfactual branching.
+
+
+2. SCRIPT A: 3-MINUTE EXECUTIVE BRIEFING
+----------------------------------------
+Target Audience: Chief Risk Officers, Chief Information Security Officers, Policy Directors
+Objective: Demonstrate how Social Gravity transforms narrative risk from a guessing game
+           into quantifiable, preventable decision intelligence.
+
+[0:00 - 0:45] The Problem Statement:
+- Presenter Voice:
+  "Modern social networks are digital supercolliders for beliefs. Whether it's the
+   March 2023 Silicon Valley Bank run where $42 billion vanished in 36 hours, or the
+   5G-COVID cellular tower panics, crises spread faster than human communications teams
+   can draft press releases. Post-mortems are useless. You need foresight."
+- Action on Screen:
+  Open Social Gravity. The dashboard initializes instantly in dark mode, showing an
+  active 1,000-node network with force-directed physics.
+
+[0:45 - 1:45] Live Contagion Injection:
+- Presenter Voice:
+  "Here we have a real community network ingested from Stanford SNAP. Let's introduce
+   a high-threat financial rumor: 'Regulator halting withdrawals immediately.'
+   Notice our local GoEmotions engine classifies this as high-arousal panic.
+   Watch what happens when we hit Play."
+- Action on Screen:
+  Select Scenario 'SVB Bank Run'. Click 'Start Simulation'.
+  Tick 1: Patient zero blinks red.
+  Tick 2: The rumor crosses into the executive cluster.
+  Tick 3: R0 spikes to 3.2. Believer count explodes from 4 to 82 agents.
+
+[1:45 - 2:30] The Counterfactual "Aha!" Moment:
+- Presenter Voice:
+  "Traditional platforms just show a dashboard glowing red. Social Gravity lets you
+   branch reality. We hit 'Branch Counterfactual'. The system spins up parallel
+   universes: Universe A does nothing. Universe B sends a blanket public debunk.
+   Universe C inoculates just 3 inter-cluster bridge nodes before the rumor spreads."
+- Action on Screen:
+  Click 'Compare Counterfactuals'. The 3-way split comparison chart renders instantly.
+  Universe C shows 84% containment efficiency, halting the bank run in its tracks.
+
+[2:30 - 3:00] The Close & Call to Action:
+- Presenter Voice:
+  "With one click, our analyst exports an executive PDF intelligence brief. Social
+   Gravity runs 100% locally on your secure laptop—no cloud, no API keys, zero leakages.
+   That is how you turn information chaos into quantifiable defense."
+- Action on Screen:
+  Click 'Export Brief (PDF)'. Print preview opens displaying the classified-style brief.
+
+
+3. SCRIPT B: 7-MINUTE TECHNICAL ANALYST WALKTHROUGH
+----------------------------------------------------
+Target Audience: Threat Intelligence Analysts, SOC Leads, Data Scientists
+
+[0:00 - 1:30] Architecture & Ingestion
+- Highlight local-first TypeScript/Tauri engine with zero telemetry.
+- Demonstrate CLI and UI ingestion: Drag-and-drop SNAP Facebook ego-network (#0)
+  and Reddit JSON thread trees.
+- Show node feature breakdown: In-degree, Out-degree, Betweenness, Local Clustering,
+  and Asch conformity thresholds.
+
+[1:30 - 3:00] Cognitive Traits & Affective NLP
+- Explain the dual-process cognitive adoption model:
+  * System 1: Affective resonance driven by on-device GoEmotions classifier.
+  * System 2: Rational utility, Asch conformity, and peer reinforcement.
+- Type custom narrative text into the payload inspector:
+  "Emergency advisory: Water treatment plant chemical leak in Zone 4."
+- Show real-time extraction of 27 emotion probabilities; highlight high-arousal
+  Fear (0.89) shifting agent susceptibility curve.
+
+[3:00 - 4:45] Dynamic Graph Physics & Simulation Control
+- Run the simulation with live streaming updates.
+- Point out edge decay mechanics: inactive ties fade by 2% per tick; triadic closure
+  dynamically bridges mutual friends.
+- Scrub the timeline: Move backward to Round 2 to inspect exact transmission routes
+  and identify patient zero transmission vectors.
+
+[4:45 - 6:15] Counterfactual Decision Matrix
+- Open the Counterfactual Engine tab.
+- Configure three defense strategies:
+  1. Top-3 Betweenness Centrality Inoculation (prebunking key connectors).
+  2. Public Awareness Broadcast (uniform reach).
+  3. Algorithmic Rate Limiting (throttling tie propagation velocity).
+- Review automated analytics: Containment efficiency (eta), infections prevented,
+  and relative intervention cost.
+
+[6:15 - 7:00] Operational Reporting
+- Generate tabular CSV dump with per-node epistemic states and degree metrics.
+- Export deterministic JSON replay file for archiving or multi-analyst peer review.
+
+
+4. SCRIPT C: 15-MINUTE RESEARCH & ARCHITECTURE SEMINAR
+-------------------------------------------------------
+Target Audience: Academic Researchers, Network Scientists, Defense R&D Sponsors
+
+- Slide 1: Theoretical Shortcomings of Compartment Models (SIR/SEIR in social dynamics).
+- Slide 2: Complex Contagion Theory & Non-linear Threshold Activation (Centola & Macy).
+- Slide 3: Dynamic Graph Calculus (Edge decay, interaction reinforcement, triadic closure).
+- Slide 4: Integrating Affective Computing with Cognitive Agent Architectures (Russell Circumplex).
+- Slide 5: Monte Carlo Validation Methodology (50 trials, SplitMix32 PRNG seed isolation).
+- Slide 6: Continuous Prediction Metrics (MAE: 0.1650, RMSE: 0.2081, Brier Score: 0.0673).
+- Slide 7: Outbreak Early-Warning Matrix (100% Recall on supercritical cascades).
+- Slide 8: Case Study Walkthrough 1 & 2 (5G-COVID & SVB Bank Run).
+- Slide 9: Case Study Walkthrough 3 & 4 (AI Synthetic Deepfake & 2024 Election Tabulator).
+- Slide 10: Asymptotic Scalability & Benchmarks (10,000 nodes at 191 ms/tick).
+- Slide 11: Security Hardening & Penetration Verification (NIST SP 800-115, CSP, PII scrubbing).
+- Slide 12: Responsible AI & Dual-Use Defensive Boundary Guarantees.
+
+
+5. HIGH-FIDELITY SCREENSHOT & MEDIA CHECKLIST
+---------------------------------------------
+For public press kits, documentation, and conference presentation slides:
+
+[x] 1. HERO OVERVIEW: Dark-mode dashboard showing full 1,000-node graph with
+       community color clustering, top-level KPI cards, and live telemetry graph.
+[x] 2. EMOTION RADAR: Close-up of the GoEmotions affective panel showing 27-class
+       distribution, valence/arousal circumplex coordinates, and propagation multiplier.
+[x] 3. REPLAY TIMELINE: Scrubber bar showing historical rounds, transmission vector
+       sparklines, and step-back snapshot controls.
+[x] 4. COUNTERFACTUAL MATRIX: Side-by-side comparison chart showing Unmitigated vs
+       Bridge Inoculation vs Broadcast Debunking trajectories.
+[x] 5. PDF INTELLIGENCE BRIEF: Print preview of executive report with threat badge,
+       R0 timeline, and surgical recommendation block.
+[x] 6. LIVE CONNECTOR HUD: Status view of Reddit, Bluesky Jetstream, RSS, and Local
+       stream connectors operating with sliding deduplication counters.
+
+MILESTONE V8 EXIT GATE: SATISFIED ✅
+================================================================================

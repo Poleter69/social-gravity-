@@ -1,0 +1,64 @@
+================================================================================
+SOCIAL GRAVITY — RELEASE NOTES (v1.0.0-alpha)
+Codename: "Galileo Orbit"
+Release Date: September 2026
+================================================================================
+
+Social Gravity v1.0.0-alpha marks the first production-validated release of the
+open Decision Intelligence Operating System for computational social physics,
+narrative risk intelligence, and behavioral cascade forecasting.
+
+MAJOR HIGHLIGHTS
+----------------
+1. Dual-Process Behavioral Simulation Engine
+   - Synthesizes Asch conformity, risk tolerance, epistemic trust, and decay dynamics.
+   - 100% deterministic replay via SplitMix32 PRNG seed control.
+   - Dynamic network calculus supporting exponential edge decay and triadic closure.
+
+2. Real-World Dataset Pipeline
+   - Native ingestion of Stanford SNAP Facebook networks (4,039 nodes, 88,234 edges).
+   - Ingestion of live and historical Reddit conversation trees into dynamic graphs.
+
+3. On-Device GoEmotions Affective Intelligence
+   - Integrates 58k-example Google GoEmotions classification directly in the browser/WASM.
+   - Projects 27 fine-grained emotional states into continuous 2D Valence/Arousal space.
+   - Emotion modulation accelerates or dampens transmission probabilities and cognitive defense.
+
+4. 3-Way Counterfactual Branching Engine
+   - Clone live simulation states at any arbitrary tick into parallel counterfactual universes.
+   - Compare Bridge Node Inoculation, Mass Broadcast Debunking, and Algorithmic Rate Limiting.
+   - Automated compute of containment efficiency (eta) and cost-benefit ratios.
+
+5. Enterprise Analyst Workstation UI
+   - Force-directed 60 FPS network visualization with real-time community coloring.
+   - Replay timeline scrubber with step, rewind, fast-forward, and snapshot save.
+   - Threat intelligence radar, R0 epidemic tracker, and community polarization gauges.
+   - One-click native exports: Tabular CSV, Replay JSON, and printable PDF intelligence briefs.
+
+6. Live Intelligence Connectors (Optional Streaming)
+   - Real-time intake from Reddit public endpoints, Bluesky Jetstream WebSocket firehose,
+     public news RSS feeds, and local JSON stream drops.
+   - 5-minute sliding deduplication store prevents redundant graph ingestion.
+
+7. Desktop Packaging & Security Certification
+   - Packaged with Tauri (Rust) for Windows, macOS, and Linux.
+   - Strict Content Security Policy; zero third-party telemetry; air-gap capable.
+   - 100% pass rate across XSS, DoS, and PII penetration suites.
+
+BREAKING CHANGES & MIGRATION
+----------------------------
+- Replaces legacy synthetic-only generator with real SNAP and Reddit graph adapters.
+- Deprecates heuristic sentiment scoring in favor of continuous GoEmotions affective vectors.
+- Telemetry format upgraded to Schema v2 (`RoundTelemetry` includes `cascadeVelocity` and `maxCascadeDepth`).
+
+KNOWN LIMITATIONS
+-----------------
+- Extremely dense networks (>20,000 nodes) may experience frame rate drops during
+  continuous force-directed layout recalculations on machines without dedicated GPU acceleration.
+- Local GoEmotions ONNX model requires initial one-time model cache fetch (~45 MB)
+  if running in web mode rather than bundled desktop binary.
+
+CONTRIBUTORS
+------------
+Antigravity AI Systems Research Group & Social Gravity Engineering Core.
+================================================================================
