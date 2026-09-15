@@ -12,6 +12,7 @@ import { applyEmotionalHomeostasis } from '../psychology/rules/confidenceRecover
 import { PRNG } from '../society/math/random';
 import { TransmissionPriorityQueue } from './queue';
 import { CascadeTracker } from './cascadeTracker';
+import { EmotionEngine } from '../nlp/emotionEngine';
 import { 
   AgentEpidemicState, 
   SimulationConfig, 
@@ -309,16 +310,73 @@ export class RumorEngine {
     const neighbors = this.adjacency.get(senderId) || [];
     const sender = this.agentIndex.get(senderId);
 
+    // Resolve multi-dimensional emotion profile from signal
+    const signalEmotion = signal.emotionProfile || EmotionEngine.getInstance().predictSync(signal.content || signal.topic);
+    signal.emotionProfile = signalEmotion;
+
+    const fear = signalEmotion.emotionVector?.fear || 0;
+    const anger = signalEmotion.emotionVector?.anger || 0;
+    const curiosity = signalEmotion.emotionVector?.curiosity || 0;
+    const gratitude = signalEmotion.emotionVector?.gratitude || 0;
+
     for (const neighborId of neighbors) {
-      const delay = this.calculateDelay();
+      const target = this.agentIndex.get(neighborId);
+      const isBridgeEdge = !!(sender && target && sender.communityId !== target.communityId);
+
+      // Emotion-Driven Transmission Probability:
+      // P = f(trust, influence, emotion, risk, conformity)
+      const dyadicTrust = sender ? (sender.peerTrustMap[neighborId] ?? sender.traits.trust) : 0.5;
+      const influence = sender ? sender.traits.influence : 0.5;
+      const riskTolerance = sender ? sender.traits.riskTolerance : 0.5;
+      const conformity = sender ? sender.traits.conformity : 0.5;
+
+      // Curiosity enhances cross-community bridge traversal
+      const curiosityBridgeBonus = isBridgeEdge ? curiosity * 0.35 : 0;
+      // Gratitude dampens hostile/unverified rumors
+      const gratitudeDampening = signal.veracity !== 'true' ? gratitude * 0.30 : 0;
+
+      const rawProbability =
+        0.35 +
+        0.20 * influence +
+        0.15 * dyadicTrust +
+        0.15 * riskTolerance +
+        0.10 * conformity +
+        0.25 * anger +
+        0.15 * fear +
+        curiosityBridgeBonus -
+        gratitudeDampening;
+
+      const transmissionProbability = Number(Math.max(0.10, Math.min(0.99, rawProbability)).toFixed(3));
+
+      // Stochastic gating: probability test
+      if (this.config.stochasticTransmission) {
+        if (this.rng.nextFloat() > transmissionProbability) {
+          continue; // Resistance overcame transmission
+        }
+      }
+
+      // Delay calculation with emotional acceleration/deceleration:
+      let delay = this.calculateDelay();
+      if (fear >= 0.45 || anger >= 0.40) {
+        // High threat / anger accelerates diffusion (urgent transmission)
+        delay = Math.max(1, delay - 1);
+      } else if (curiosity >= 0.50) {
+        // High curiosity spreads more deliberately (+1 round delay)
+        delay = delay + 1;
+      }
+
       const scheduledRound = currentRound + delay;
-      const priority = sender ? Math.floor(sender.traits.influence * 10) : 5;
+
+      // Queue priority: High fear, anger, and influence boost dispatch order
+      const priority = sender
+        ? Math.floor(sender.traits.influence * 10 + (fear + anger) * 8)
+        : 5;
 
       this.queue.enqueue({
         id: `tx_${senderId}_${neighborId}_r${scheduledRound}_${this.rng.nextFloat()}`,
         sourceId: senderId,
         targetId: neighborId,
-        signal: { ...signal, senderId },
+        signal: { ...signal, senderId, emotionProfile: signalEmotion },
         scheduledRound,
         priority,
         transmitted: false,
