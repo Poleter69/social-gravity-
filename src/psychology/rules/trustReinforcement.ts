@@ -5,6 +5,7 @@
  */
 
 import { Agent } from '../../society/types/agent';
+import { EmotionProfile } from '../../nlp/types';
 
 export interface TrustEvaluation {
   senderId: string;
@@ -17,24 +18,50 @@ export interface TrustEvaluation {
 
 export function evaluateSenderCredibility(
   agent: Agent,
-  senderId: string
+  senderId: string,
+  signalEmotion?: EmotionProfile
 ): { senderTrust: number; reasoningStep: string } {
   const isDirectPeer = agent.connections.includes(senderId);
   const dyadicTrust = agent.peerTrustMap[senderId] ?? agent.traits.trust;
 
-  let reasoningStep: string;
   if (senderId === agent.id) {
     return { senderTrust: 1.0, reasoningStep: 'Self-generated signal.' };
   }
 
+  // Real GoEmotions Affective Modulation:
+  // Admiration increases trust (+0.15 * score)
+  // Approval strengthens persuasion (+0.10 * score)
+  // Disapproval weakens persuasion (-0.18 * score)
+  let emotionalTrustShift = 0;
+  let emotionReasoning = '';
+  if (signalEmotion) {
+    const adm = signalEmotion.emotionVector?.admiration || 0;
+    const app = signalEmotion.emotionVector?.approval || 0;
+    const dis = signalEmotion.emotionVector?.disapproval || 0;
+
+    emotionalTrustShift = 0.15 * adm + 0.1 * app - 0.18 * dis;
+    if (adm > 0.3) {
+      emotionReasoning = ` Admiration boosted epistemic trust (+${(adm * 15).toFixed(0)}%).`;
+    } else if (app > 0.3) {
+      emotionReasoning = ` Approval reinforced persuasion (+${(app * 10).toFixed(0)}%).`;
+    } else if (dis > 0.3) {
+      emotionReasoning = ` Disapproval weakened sender credibility (-${(dis * 18).toFixed(0)}%).`;
+    }
+  }
+
+  const effectiveTrust = Number(
+    Math.max(0.02, Math.min(0.99, dyadicTrust + emotionalTrustShift)).toFixed(3)
+  );
+
+  let reasoningStep: string;
   if (isDirectPeer) {
-    reasoningStep = `Sender ${senderId} is a recognized contact with dyadic trust ${(dyadicTrust * 100).toFixed(0)}%.`;
+    reasoningStep = `Sender ${senderId} is a recognized contact with dyadic trust ${(effectiveTrust * 100).toFixed(0)}%.${emotionReasoning}`;
   } else {
-    reasoningStep = `Sender ${senderId} is an outside contact; defaulting to baseline prior ${(dyadicTrust * 100).toFixed(0)}%.`;
+    reasoningStep = `Sender ${senderId} is an outside contact; effective prior ${(effectiveTrust * 100).toFixed(0)}%.${emotionReasoning}`;
   }
 
   return {
-    senderTrust: dyadicTrust,
+    senderTrust: effectiveTrust,
     reasoningStep,
   };
 }

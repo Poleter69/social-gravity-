@@ -5,6 +5,7 @@
  */
 
 import { Agent } from '../../society/types/agent';
+import { EmotionProfile } from '../../nlp/types';
 
 export interface SocialProofAssessment {
   totalNeighbors: number;
@@ -23,7 +24,8 @@ export interface SocialProofAssessment {
 export function evaluateSocialProof(
   agent: Agent,
   neighbors: Agent[],
-  targetBelief: 'believer' | 'skeptical' | 'debunker' = 'believer'
+  targetBelief: 'believer' | 'skeptical' | 'debunker' = 'believer',
+  signalEmotion?: EmotionProfile
 ): SocialProofAssessment {
   if (neighbors.length === 0) {
     return {
@@ -49,7 +51,9 @@ export function evaluateSocialProof(
   for (const neighbor of neighbors) {
     // Dyadic weight combines edge proximity with neighbor's personal influence and trust
     const dyadicTrust = agent.peerTrustMap[neighbor.id] ?? agent.traits.trust;
-    const effectiveWeight = 0.4 + 0.3 * dyadicTrust + 0.3 * neighbor.traits.influence;
+    // Neighbor approval strengthens peer influence
+    const neighborApproval = neighbor.psychology.emotionProfile?.emotionVector?.approval || 0;
+    const effectiveWeight = 0.4 + 0.3 * dyadicTrust + 0.3 * neighbor.traits.influence + 0.15 * neighborApproval;
     totalWeight += effectiveWeight;
 
     if (neighbor.state.beliefStatus === targetBelief) {
@@ -66,9 +70,12 @@ export function evaluateSocialProof(
   const consensusRatio = totalWeight > 0 ? agreeingWeight / totalWeight : 0;
 
   // Non-linear Asch sigmoid: conformity amplifies when consensus exceeds 50%
-  // C_threshold decreases as agent's intrinsic conformity trait increases
-  const independenceThreshold = Math.max(0.2, 1.0 - agent.traits.conformity * 0.75);
-  const rawPressure = consensusRatio * (0.5 + 0.5 * agent.traits.conformity);
+  // Emotional intensity shifts Asch conformity thresholds:
+  // High emotional intensity lowers resistance to social pressure (lowers independence threshold)
+  const emotionalIntensity = signalEmotion?.intensity ?? 0.2;
+  const emotionalThresholdShift = emotionalIntensity * 0.25; // up to -0.25 threshold reduction
+  const independenceThreshold = Math.max(0.12, 1.0 - agent.traits.conformity * 0.75 - emotionalThresholdShift);
+  const rawPressure = consensusRatio * (0.5 + 0.5 * agent.traits.conformity + 0.2 * emotionalIntensity);
   const conformityPressure = Number(Math.min(1.0, rawPressure).toFixed(3));
 
   const isConsensusCompelling = consensusRatio >= independenceThreshold && agreeingCount >= 2;

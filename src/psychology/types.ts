@@ -3,6 +3,8 @@
  * Defines dimensional emotional vectors, incoming signals, decision actions, and explainable audit trails.
  */
 
+import { EmotionProfile } from '../nlp/types';
+
 export type DecisionAction = 'ignore' | 'scrutinize' | 'adopt' | 'amplify' | 'debunk';
 
 export interface EmotionalVector {
@@ -14,6 +16,12 @@ export interface EmotionalVector {
   fear: number;
   /** Subjective certainty and agency [0, 1] */
   confidence: number;
+  /** Multidimensional GoEmotions extensions [0, 1] */
+  anger?: number;
+  admiration?: number;
+  curiosity?: number;
+  gratitude?: number;
+  disapproval?: number;
 }
 
 export interface InformationSignal {
@@ -29,6 +37,8 @@ export interface InformationSignal {
   /** ID of the originating or transmitting agent */
   senderId: string;
   round: number;
+  /** Full 28-dimensional GoEmotions profile */
+  emotionProfile?: EmotionProfile;
 }
 
 export interface DecisionFactors {
@@ -40,6 +50,8 @@ export interface DecisionFactors {
   confidenceLevel: number;
   riskTolerance: number;
   effectiveCredibility: number;
+  emotionIntensity?: number;
+  primaryEmotion?: string;
 }
 
 export interface DecisionLog {
@@ -65,4 +77,6 @@ export interface PsychologicalState {
   decisionLogs: DecisionLog[];
   verificationsEncountered: number;
   misinformationEncountered: number;
+  /** Complete 28-dimensional GoEmotions affective profile of the agent */
+  emotionProfile?: EmotionProfile;
 }

@@ -11,6 +11,7 @@ import { evaluateSenderCredibility } from './rules/trustReinforcement';
 import { evaluateSocialProof } from './rules/socialProof';
 import { evaluateFearAmplification } from './rules/fearAmplification';
 import { analyzeNeighborhoodContext } from './neighborhood';
+import { EmotionEngine } from '../nlp/emotionEngine';
 
 export class BehavioralDecisionEngine {
   /**
@@ -24,24 +25,38 @@ export class BehavioralDecisionEngine {
   ): DecisionLog {
     const reasoningSteps: string[] = [];
 
-    // Step 1: Evaluate Sender Credibility
-    const { senderTrust, reasoningStep: senderStep } = evaluateSenderCredibility(agent, signal.senderId);
+    // Resolve multi-dimensional emotion profile from signal
+    const signalEmotion = signal.emotionProfile || EmotionEngine.getInstance().predictSync(signal.content || signal.topic);
+    signal.emotionProfile = signalEmotion;
+
+    // Step 1: Evaluate Sender Credibility with GoEmotions Modulation
+    const { senderTrust, reasoningStep: senderStep } = evaluateSenderCredibility(
+      agent,
+      signal.senderId,
+      signalEmotion
+    );
     reasoningSteps.push(`[Sender Credibility] ${senderStep}`);
 
     // Step 2: Evaluate Neighborhood & Topological Context
     const neighborhood = analyzeNeighborhoodContext(agent, society);
     reasoningSteps.push(`[Neighborhood Context] ${neighborhood.reasoningStep}`);
 
-    // Step 3: Evaluate Social Proof & Normative Conformity
-    const socialProof = evaluateSocialProof(agent, neighborhood.neighborAgents, 'believer');
+    // Step 3: Evaluate Social Proof & Normative Conformity with Emotional Intensity
+    const socialProof = evaluateSocialProof(
+      agent,
+      neighborhood.neighborAgents,
+      'believer',
+      signalEmotion
+    );
     reasoningSteps.push(`[Social Proof] ${socialProof.reasoningStep}`);
 
-    // Step 4: Evaluate Threat Salience & Fear Amplification
+    // Step 4: Evaluate Threat Salience & Fear/Anger Amplification
     const fearResult = evaluateFearAmplification(agent, signal);
     reasoningSteps.push(`[Emotional Reaction] ${fearResult.reasoningStep}`);
 
-    // Update agent's internal emotional vector
+    // Update agent's internal emotional vector and affective profile
     agent.psychology.emotions = fearResult.emotionalShift;
+    agent.psychology.emotionProfile = signalEmotion;
 
     // Dampen confidence and elevate uncertainty if bridge node experiences cross-community conflict
     if (neighborhood.hasConflictingSignals) {
@@ -65,6 +80,8 @@ export class BehavioralDecisionEngine {
     let narrativeSummary: string;
     const emotions = agent.psychology.emotions;
 
+    const angerLevel = emotions.anger ?? (signalEmotion.emotionVector?.anger || 0);
+
     // Condition A: Active Debunking
     if (
       agent.psychology.skepticism >= 0.65 &&
@@ -76,16 +93,16 @@ export class BehavioralDecisionEngine {
       narrativeSummary = `High skepticism (${(agent.psychology.skepticism * 100).toFixed(0)}%) and weak credibility (${(effectiveCredibility * 100).toFixed(0)}%) prompted active refutation/debunking.`;
       reasoningSteps.push(`[Synthesis: DEBUNK] Agent possessed high confidence and sufficient skepticism to challenge the claim.`);
     }
-    // Condition B: Amplification (Share outward)
+    // Condition B: Amplification (Share outward) - Accelerated by anger and fear
     else if (
-      (effectiveCredibility >= 0.55 || socialProof.isConsensusCompelling) &&
-      (emotions.fear >= 0.45 || agent.traits.riskTolerance >= 0.60 || agent.traits.influence >= 0.75)
+      (effectiveCredibility >= 0.52 || socialProof.isConsensusCompelling || angerLevel >= 0.45) &&
+      (emotions.fear >= 0.40 || angerLevel >= 0.40 || agent.traits.riskTolerance >= 0.55 || agent.traits.influence >= 0.70)
     ) {
       action = 'amplify';
       agent.state.beliefStatus = 'believer';
       agent.state.shareCount += 1;
-      narrativeSummary = `High credibility (${(effectiveCredibility * 100).toFixed(0)}%) combined with threat urgency (fear ${(emotions.fear * 100).toFixed(0)}%) triggered immediate amplification.`;
-      reasoningSteps.push(`[Synthesis: AMPLIFY] Persuasive consensus and emotional salience triggered broadcast to neighbors.`);
+      narrativeSummary = `High credibility (${(effectiveCredibility * 100).toFixed(0)}%) and emotional intensity (${signalEmotion.primaryEmotion}) triggered immediate amplification.`;
+      reasoningSteps.push(`[Synthesis: AMPLIFY] Emotional salience (${signalEmotion.primaryEmotion} intensity ${(signalEmotion.intensity * 100).toFixed(0)}%) and consensus triggered broadcast.`);
     }
     // Condition C: Quiet Adoption
     else if (effectiveCredibility >= 0.48 || socialProof.isConsensusCompelling) {
@@ -112,11 +129,13 @@ export class BehavioralDecisionEngine {
     }
 
     // Map continuous emotion vector to legacy categorical emotionalState for UI compatibility
-    if (emotions.fear >= 0.55) {
+    if (angerLevel >= 0.45) {
+      agent.state.emotionalState = 'indignant';
+    } else if (emotions.fear >= 0.50) {
       agent.state.emotionalState = 'anxious';
     } else if (action === 'debunk') {
       agent.state.emotionalState = 'indignant';
-    } else if (emotions.calm >= 0.60) {
+    } else if (emotions.calm >= 0.55 || signalEmotion.category === 'positive') {
       agent.state.emotionalState = 'optimistic';
     } else {
       agent.state.emotionalState = 'neutral';
@@ -135,6 +154,8 @@ export class BehavioralDecisionEngine {
       confidenceLevel: emotions.confidence,
       riskTolerance: agent.traits.riskTolerance,
       effectiveCredibility,
+      emotionIntensity: signalEmotion.intensity,
+      primaryEmotion: signalEmotion.primaryEmotion,
     };
 
     const decisionConfidence = Number(
