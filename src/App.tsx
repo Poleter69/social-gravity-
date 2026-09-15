@@ -27,9 +27,10 @@ import {
   Zap,
   Sparkles,
   GitFork,
-  History
+  History,
+  Heart
 } from 'lucide-react';
-import { DiscoveryEngine, DiscoveryReport, DiscoveryDashboard, AnalystReplayDashboard } from './discovery';
+import { DiscoveryEngine, DiscoveryReport, DiscoveryDashboard, AnalystReplayDashboard, EmotionalIntelligenceDashboard } from './discovery';
 import { societyGenerator } from './society/generators/societyGenerator';
 import { SocietyArchetype, Community } from './society/types/community';
 import { Society } from './society/types/society';
@@ -62,7 +63,7 @@ export const App: React.FC = () => {
 
   // UI state
   const [copied, setCopied] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'topology' | 'replay' | 'communities' | 'agents' | 'telemetry' | 'discovery' | 'json'>('topology');
+  const [activeTab, setActiveTab] = useState<'topology' | 'replay' | 'emotion' | 'communities' | 'agents' | 'telemetry' | 'discovery' | 'json'>('topology');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [agentSearch, setAgentSearch] = useState<string>('');
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
@@ -945,6 +946,17 @@ export const App: React.FC = () => {
                 <span>Analyst Replay ({simState ? simState.telemetryHistory.length : 0})</span>
               </button>
               <button
+                onClick={() => setActiveTab('emotion')}
+                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors flex items-center space-x-1.5 ${
+                  activeTab === 'emotion'
+                    ? 'border-pink-400 text-pink-300'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Heart className="h-3.5 w-3.5 text-pink-400" />
+                <span>Emotional Intelligence</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('communities')}
                 className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors ${
                   activeTab === 'communities'
@@ -1229,6 +1241,14 @@ export const App: React.FC = () => {
                   report={discoveryReport}
                   isAnalyzing={isAnalyzing}
                   onRunAnalysis={handleRunDiscovery}
+                />
+              )}
+
+              {activeTab === 'emotion' && (
+                <EmotionalIntelligenceDashboard
+                  society={activeSociety}
+                  simState={simState}
+                  telemetry={discoveryReport?.telemetry}
                 />
               )}
 

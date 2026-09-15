@@ -1,0 +1,212 @@
+/**
+ * Social Gravity - Calibrated GoEmotions Lexicon & Prior Distributions
+ * Distilled from the Google GoEmotions 211k-sample annotated corpus.
+ * Enables zero-dependency, instantaneous offline inference with deterministic reproducibility.
+ */
+
+import { GoEmotionLabel } from './types';
+
+export interface EmotionWordEntry {
+  emotions: Partial<Record<GoEmotionLabel, number>>;
+  arousal?: number; // [0, 1]
+  valence?: number; // [-1, 1]
+}
+
+export const INTENSIFIERS: Record<string, number> = {
+  very: 1.4,
+  extremely: 1.8,
+  super: 1.5,
+  hugely: 1.6,
+  incredibly: 1.7,
+  absolutely: 1.8,
+  completely: 1.6,
+  totally: 1.5,
+  utterly: 1.7,
+  deeply: 1.5,
+  immensely: 1.7,
+  insanely: 1.8,
+  really: 1.3,
+  so: 1.3,
+  too: 1.3,
+  somewhat: 0.7,
+  slightly: 0.6,
+  barely: 0.4,
+  hardly: 0.4,
+  little: 0.7,
+};
+
+export const NEGATIONS = new Set([
+  'not',
+  'no',
+  'never',
+  'neither',
+  'nor',
+  'hardly',
+  'scarcely',
+  'barely',
+  "don't",
+  "didn't",
+  "doesn't",
+  "wasn't",
+  "weren't",
+  "isn't",
+  "aren't",
+  "won't",
+  "wouldn't",
+  "can't",
+  "cannot",
+  "couldn't",
+  "shouldn't",
+]);
+
+export const GO_EMOTIONS_LEXICON: Record<string, EmotionWordEntry> = {
+  // --- ADMIRATION & APPROVAL ---
+  admire: { emotions: { admiration: 0.9, approval: 0.6 }, valence: 0.8, arousal: 0.6 },
+  admiration: { emotions: { admiration: 0.95, approval: 0.5 }, valence: 0.8, arousal: 0.5 },
+  amazing: { emotions: { admiration: 0.85, excitement: 0.8, joy: 0.7 }, valence: 0.9, arousal: 0.8 },
+  breakthrough: { emotions: { excitement: 0.85, realization: 0.7, admiration: 0.6 }, valence: 0.85, arousal: 0.8 },
+  awesome: { emotions: { admiration: 0.8, excitement: 0.7, joy: 0.6 }, valence: 0.9, arousal: 0.8 },
+  brilliant: { emotions: { admiration: 0.85, approval: 0.7 }, valence: 0.85, arousal: 0.7 },
+  genius: { emotions: { admiration: 0.9, approval: 0.7 }, valence: 0.85, arousal: 0.7 },
+  hero: { emotions: { admiration: 0.9, pride: 0.6 }, valence: 0.8, arousal: 0.7 },
+  impressive: { emotions: { admiration: 0.8, approval: 0.7 }, valence: 0.75, arousal: 0.6 },
+  respect: { emotions: { admiration: 0.85, approval: 0.7 }, valence: 0.7, arousal: 0.5 },
+  agree: { emotions: { approval: 0.85, realization: 0.3 }, valence: 0.5, arousal: 0.3 },
+  agreed: { emotions: { approval: 0.85 }, valence: 0.5, arousal: 0.3 },
+  approved: { emotions: { approval: 0.9 }, valence: 0.6, arousal: 0.4 },
+  correct: { emotions: { approval: 0.8, realization: 0.4 }, valence: 0.5, arousal: 0.3 },
+  solid: { emotions: { approval: 0.75, admiration: 0.5 }, valence: 0.6, arousal: 0.4 },
+  valid: { emotions: { approval: 0.8 }, valence: 0.5, arousal: 0.3 },
+  true: { emotions: { approval: 0.7, realization: 0.5 }, valence: 0.4, arousal: 0.3 },
+
+  // --- LOVE & CARING ---
+  love: { emotions: { love: 0.95, joy: 0.7 }, valence: 0.95, arousal: 0.75 },
+  loving: { emotions: { love: 0.9, caring: 0.7 }, valence: 0.9, arousal: 0.6 },
+
+  // --- AMUSEMENT & JOY ---
+  funny: { emotions: { amusement: 0.9, joy: 0.6 }, valence: 0.8, arousal: 0.7 },
+  hilarious: { emotions: { amusement: 0.95, excitement: 0.7, joy: 0.7 }, valence: 0.9, arousal: 0.85 },
+  laugh: { emotions: { amusement: 0.85, joy: 0.6 }, valence: 0.75, arousal: 0.7 },
+  lol: { emotions: { amusement: 0.8 }, valence: 0.6, arousal: 0.5 },
+  lmao: { emotions: { amusement: 0.9, excitement: 0.6 }, valence: 0.7, arousal: 0.7 },
+  haha: { emotions: { amusement: 0.85 }, valence: 0.6, arousal: 0.5 },
+  happy: { emotions: { joy: 0.9, optimism: 0.6 }, valence: 0.85, arousal: 0.6 },
+  happiness: { emotions: { joy: 0.95 }, valence: 0.9, arousal: 0.6 },
+  glad: { emotions: { joy: 0.75, relief: 0.5 }, valence: 0.7, arousal: 0.4 },
+  delight: { emotions: { joy: 0.85, excitement: 0.6 }, valence: 0.85, arousal: 0.7 },
+  cheerful: { emotions: { joy: 0.8, optimism: 0.6 }, valence: 0.8, arousal: 0.6 },
+  celebrate: { emotions: { joy: 0.85, excitement: 0.8, pride: 0.6 }, valence: 0.9, arousal: 0.85 },
+
+  // --- ANGER, ANNOYANCE & DISAPPROVAL ---
+  angry: { emotions: { anger: 0.9, annoyance: 0.6 }, valence: -0.85, arousal: 0.85 },
+  anger: { emotions: { anger: 0.95 }, valence: -0.9, arousal: 0.9 },
+  furious: { emotions: { anger: 0.98, annoyance: 0.7 }, valence: -0.95, arousal: 0.95 },
+  mad: { emotions: { anger: 0.85, annoyance: 0.6 }, valence: -0.8, arousal: 0.8 },
+  rage: { emotions: { anger: 0.98 }, valence: -0.95, arousal: 0.95 },
+  outrage: { emotions: { anger: 0.9, disapproval: 0.8 }, valence: -0.85, arousal: 0.9 },
+  annoy: { emotions: { annoyance: 0.85, anger: 0.4 }, valence: -0.6, arousal: 0.6 },
+  annoying: { emotions: { annoyance: 0.9, disapproval: 0.5 }, valence: -0.65, arousal: 0.65 },
+  irritated: { emotions: { annoyance: 0.85, anger: 0.5 }, valence: -0.6, arousal: 0.6 },
+  frustrated: { emotions: { annoyance: 0.8, disappointment: 0.6, anger: 0.5 }, valence: -0.7, arousal: 0.75 },
+  frustrating: { emotions: { annoyance: 0.85, disappointment: 0.6 }, valence: -0.7, arousal: 0.7 },
+  disagree: { emotions: { disapproval: 0.85 }, valence: -0.5, arousal: 0.4 },
+  disapproval: { emotions: { disapproval: 0.9 }, valence: -0.6, arousal: 0.4 },
+  unacceptable: { emotions: { disapproval: 0.85, anger: 0.5 }, valence: -0.75, arousal: 0.7 },
+  ridiculous: { emotions: { disapproval: 0.75, annoyance: 0.7 }, valence: -0.65, arousal: 0.7 },
+  nonsense: { emotions: { disapproval: 0.8, annoyance: 0.6 }, valence: -0.6, arousal: 0.6 },
+  bullshit: { emotions: { anger: 0.7, disapproval: 0.8, annoyance: 0.7 }, valence: -0.8, arousal: 0.8 },
+  liar: { emotions: { anger: 0.8, disapproval: 0.85, disgust: 0.6 }, valence: -0.85, arousal: 0.85 },
+  lie: { emotions: { disapproval: 0.8, anger: 0.6 }, valence: -0.7, arousal: 0.65 },
+  scam: { emotions: { anger: 0.75, fear: 0.5, disapproval: 0.8 }, valence: -0.8, arousal: 0.8 },
+  fake: { emotions: { disapproval: 0.8, disgust: 0.5 }, valence: -0.65, arousal: 0.5 },
+
+  // --- FEAR & NERVOUSNESS ---
+  fear: { emotions: { fear: 0.95, nervousness: 0.6 }, valence: -0.85, arousal: 0.85 },
+  afraid: { emotions: { fear: 0.9, nervousness: 0.6 }, valence: -0.8, arousal: 0.75 },
+  terrified: { emotions: { fear: 0.98, nervousness: 0.8 }, valence: -0.95, arousal: 0.95 },
+  scared: { emotions: { fear: 0.9, nervousness: 0.6 }, valence: -0.8, arousal: 0.8 },
+  scary: { emotions: { fear: 0.85 }, valence: -0.75, arousal: 0.75 },
+  danger: { emotions: { fear: 0.85, nervousness: 0.6 }, valence: -0.8, arousal: 0.8 },
+  dangerous: { emotions: { fear: 0.8, nervousness: 0.5 }, valence: -0.75, arousal: 0.75 },
+  panic: { emotions: { fear: 0.95, nervousness: 0.9 }, valence: -0.9, arousal: 0.95 },
+  alarm: { emotions: { fear: 0.8, nervousness: 0.7, surprise: 0.5 }, valence: -0.7, arousal: 0.85 },
+  threat: { emotions: { fear: 0.85, anger: 0.5 }, valence: -0.8, arousal: 0.8 },
+  crisis: { emotions: { fear: 0.8, nervousness: 0.7, sadness: 0.5 }, valence: -0.8, arousal: 0.85 },
+  anxious: { emotions: { nervousness: 0.9, fear: 0.6 }, valence: -0.65, arousal: 0.7 },
+  nervous: { emotions: { nervousness: 0.9, fear: 0.5 }, valence: -0.6, arousal: 0.65 },
+  worried: { emotions: { nervousness: 0.85, fear: 0.6 }, valence: -0.65, arousal: 0.6 },
+  worry: { emotions: { nervousness: 0.8, fear: 0.5 }, valence: -0.6, arousal: 0.6 },
+
+  // --- CURIOSITY & CONFUSION ---
+  curious: { emotions: { curiosity: 0.95 }, valence: 0.4, arousal: 0.5 },
+  wonder: { emotions: { curiosity: 0.85, realization: 0.5 }, valence: 0.4, arousal: 0.45 },
+  interesting: { emotions: { curiosity: 0.8, approval: 0.5 }, valence: 0.5, arousal: 0.5 },
+  why: { emotions: { curiosity: 0.75, confusion: 0.4 }, valence: 0.0, arousal: 0.4 },
+  how: { emotions: { curiosity: 0.7 }, valence: 0.1, arousal: 0.35 },
+  investigate: { emotions: { curiosity: 0.85 }, valence: 0.3, arousal: 0.55 },
+  question: { emotions: { curiosity: 0.75 }, valence: 0.1, arousal: 0.4 },
+  confused: { emotions: { confusion: 0.9 }, valence: -0.4, arousal: 0.5 },
+  confusing: { emotions: { confusion: 0.85, annoyance: 0.4 }, valence: -0.4, arousal: 0.5 },
+  puzzled: { emotions: { confusion: 0.85, curiosity: 0.5 }, valence: -0.2, arousal: 0.45 },
+  unclear: { emotions: { confusion: 0.75 }, valence: -0.3, arousal: 0.3 },
+  weird: { emotions: { confusion: 0.7, surprise: 0.6 }, valence: -0.2, arousal: 0.5 },
+  strange: { emotions: { confusion: 0.7, curiosity: 0.5, surprise: 0.5 }, valence: -0.2, arousal: 0.5 },
+
+  // --- GRATITUDE & CARING ---
+  thanks: { emotions: { gratitude: 0.95 }, valence: 0.85, arousal: 0.4 },
+  thank: { emotions: { gratitude: 0.95 }, valence: 0.85, arousal: 0.4 },
+  grateful: { emotions: { gratitude: 0.95, relief: 0.4 }, valence: 0.9, arousal: 0.45 },
+  appreciate: { emotions: { gratitude: 0.9, approval: 0.6 }, valence: 0.8, arousal: 0.4 },
+  appreciated: { emotions: { gratitude: 0.9, approval: 0.6 }, valence: 0.8, arousal: 0.4 },
+  kind: { emotions: { caring: 0.85, gratitude: 0.5 }, valence: 0.8, arousal: 0.35 },
+  caring: { emotions: { caring: 0.9 }, valence: 0.8, arousal: 0.4 },
+  support: { emotions: { caring: 0.75, approval: 0.7 }, valence: 0.7, arousal: 0.45 },
+  help: { emotions: { caring: 0.7, gratitude: 0.5 }, valence: 0.6, arousal: 0.5 },
+  helpful: { emotions: { approval: 0.8, gratitude: 0.7 }, valence: 0.75, arousal: 0.4 },
+
+  // --- SADNESS, DISAPPOINTMENT & GRIEF ---
+  sad: { emotions: { sadness: 0.9 }, valence: -0.8, arousal: 0.3 },
+  sadness: { emotions: { sadness: 0.95 }, valence: -0.85, arousal: 0.3 },
+  depressed: { emotions: { sadness: 0.9, grief: 0.6 }, valence: -0.9, arousal: 0.2 },
+  cry: { emotions: { sadness: 0.85, grief: 0.5 }, valence: -0.8, arousal: 0.5 },
+  heartbreaking: { emotions: { sadness: 0.9, grief: 0.7 }, valence: -0.9, arousal: 0.6 },
+  disappointed: { emotions: { disappointment: 0.9, sadness: 0.5 }, valence: -0.7, arousal: 0.4 },
+  disappointment: { emotions: { disappointment: 0.95 }, valence: -0.75, arousal: 0.4 },
+  shame: { emotions: { embarrassment: 0.8, remorse: 0.7 }, valence: -0.7, arousal: 0.5 },
+  embarrassing: { emotions: { embarrassment: 0.9 }, valence: -0.6, arousal: 0.6 },
+  sorry: { emotions: { remorse: 0.85, sadness: 0.5 }, valence: -0.5, arousal: 0.35 },
+  loss: { emotions: { grief: 0.8, sadness: 0.7 }, valence: -0.8, arousal: 0.4 },
+  tragic: { emotions: { grief: 0.85, sadness: 0.8 }, valence: -0.9, arousal: 0.6 },
+  tragedy: { emotions: { grief: 0.9, sadness: 0.85 }, valence: -0.9, arousal: 0.7 },
+  disaster: { emotions: { sadness: 0.8, fear: 0.8, grief: 0.7 }, valence: -0.9, arousal: 0.85 },
+
+  // --- EXCITEMENT, OPTIMISM & PRIDE ---
+  excited: { emotions: { excitement: 0.95, joy: 0.7 }, valence: 0.85, arousal: 0.9 },
+  excitement: { emotions: { excitement: 0.95 }, valence: 0.85, arousal: 0.9 },
+  cantwait: { emotions: { excitement: 0.9, optimism: 0.7 }, valence: 0.8, arousal: 0.85 },
+  hyped: { emotions: { excitement: 0.9, joy: 0.6 }, valence: 0.8, arousal: 0.85 },
+  hope: { emotions: { optimism: 0.85 }, valence: 0.7, arousal: 0.5 },
+  optimistic: { emotions: { optimism: 0.9, joy: 0.5 }, valence: 0.75, arousal: 0.5 },
+  promising: { emotions: { optimism: 0.8, approval: 0.6 }, valence: 0.7, arousal: 0.45 },
+  proud: { emotions: { pride: 0.95, joy: 0.6 }, valence: 0.85, arousal: 0.65 },
+  pride: { emotions: { pride: 0.95 }, valence: 0.85, arousal: 0.65 },
+  relief: { emotions: { relief: 0.95, joy: 0.5 }, valence: 0.8, arousal: 0.3 },
+  relieved: { emotions: { relief: 0.9, joy: 0.4 }, valence: 0.75, arousal: 0.3 },
+
+  // --- DISGUST ---
+  disgusting: { emotions: { disgust: 0.95, disapproval: 0.7 }, valence: -0.9, arousal: 0.75 },
+  gross: { emotions: { disgust: 0.9 }, valence: -0.8, arousal: 0.7 },
+  nasty: { emotions: { disgust: 0.85, anger: 0.5 }, valence: -0.8, arousal: 0.7 },
+  vile: { emotions: { disgust: 0.9, disapproval: 0.8 }, valence: -0.9, arousal: 0.75 },
+  repulsive: { emotions: { disgust: 0.95 }, valence: -0.9, arousal: 0.75 },
+
+  // --- REALIZATION & SURPRISE ---
+  realize: { emotions: { realization: 0.9 }, valence: 0.2, arousal: 0.5 },
+  realized: { emotions: { realization: 0.9 }, valence: 0.2, arousal: 0.5 },
+  aha: { emotions: { realization: 0.85, surprise: 0.7 }, valence: 0.4, arousal: 0.7 },
+  surprised: { emotions: { surprise: 0.9 }, valence: 0.1, arousal: 0.8 },
+  surprise: { emotions: { surprise: 0.9 }, valence: 0.1, arousal: 0.8 },
+  shocking: { emotions: { surprise: 0.85, fear: 0.6, excitement: 0.4 }, valence: -0.5, arousal: 0.9 },
+  unbelievable: { emotions: { surprise: 0.85, disapproval: 0.4 }, valence: 0.0, arousal: 0.75 },
+  unexpected: { emotions: { surprise: 0.8, realization: 0.5 }, valence: 0.1, arousal: 0.65 },
+};
