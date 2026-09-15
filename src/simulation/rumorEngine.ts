@@ -15,7 +15,9 @@ import { CascadeTracker } from './cascadeTracker';
 import { 
   AgentEpidemicState, 
   SimulationConfig, 
-  SimulationState 
+  SimulationState,
+  SimulationSnapshot,
+  AgentStateSnapshot
 } from './types';
 
 export class RumorEngine {
@@ -27,6 +29,10 @@ export class RumorEngine {
   private state: SimulationState;
   private adjacency: Map<string, string[]> = new Map();
   private agentIndex: Map<string, Agent> = new Map();
+  private snapshots: Map<number, SimulationSnapshot> = new Map();
+
+  public onTransmission?: (sourceId: string, targetId: string, type: 'rumor' | 'debunk') => void;
+  public onRoundStep?: (round: number) => void;
 
   constructor(society: Society, config?: Partial<SimulationConfig>) {
     this.society = society;
@@ -135,6 +141,9 @@ export class RumorEngine {
       });
     });
 
+    // Clear previous snapshots
+    this.snapshots.clear();
+
     // Record Round 0 snapshot
     const initialTelemetry = CascadeTracker.computeSnapshot(
       0,
@@ -144,6 +153,7 @@ export class RumorEngine {
       null
     );
     this.state.telemetryHistory.push(initialTelemetry);
+    this.recordSnapshot(0);
 
     return this.state;
   }
@@ -188,6 +198,10 @@ export class RumorEngine {
         targetId: target.id,
         type: isDebunkSignal ? 'debunk' : 'rumor'
       });
+
+      if (this.onTransmission) {
+        this.onTransmission(source.id, target.id, isDebunkSignal ? 'debunk' : 'rumor');
+      }
 
       if (isDebunkSignal) {
         // Fact-check / debunking intervention
@@ -279,6 +293,12 @@ export class RumorEngine {
       this.state.status = 'completed';
     }
 
+    if (this.onRoundStep) {
+      this.onRoundStep(currentRound);
+    }
+
+    this.recordSnapshot(currentRound);
+
     return this.state;
   }
 
@@ -369,6 +389,7 @@ export class RumorEngine {
    */
   public reset(): void {
     this.queue.clear();
+    this.snapshots.clear();
     this.state = {
       status: 'idle',
       currentRound: 0,
@@ -385,6 +406,141 @@ export class RumorEngine {
       a.state.exposureTick = null;
       a.state.shareCount = 0;
     });
+  }
+
+  /**
+   * Captures an immutable snapshot of simulation and agent state for discrete time travel.
+   */
+  public recordSnapshot(round: number): SimulationSnapshot {
+    const details = new Map<string, AgentStateSnapshot>();
+    for (const a of this.society.agents) {
+      details.set(a.id, {
+        epidemicState: this.state.agentStates.get(a.id) || 'SUSCEPTIBLE',
+        beliefStatus: a.state.beliefStatus,
+        emotionalValence: a.state.emotionalState,
+        emotions: { ...a.psychology.emotions },
+        skepticism: a.psychology.skepticism,
+        peerTrustMap: { ...a.peerTrustMap },
+      });
+    }
+
+    const snapshot: SimulationSnapshot = {
+      round,
+      timestamp: Date.now(),
+      status: this.state.status,
+      agentStates: new Map(this.state.agentStates),
+      agentDetails: details,
+      infectionParents: new Map(this.state.infectionParents),
+      queueEvents: this.queue.getSnapshot(),
+      telemetryHistory: [...this.state.telemetryHistory],
+      recentTransmissions: [...this.state.recentTransmissions],
+      activeDebunk: this.state.activeDebunk ? { ...this.state.activeDebunk } : null,
+    };
+
+    this.snapshots.set(round, snapshot);
+    return snapshot;
+  }
+
+  /**
+   * Restores the simulation to an exact historical round without recomputing from scratch.
+   */
+  public restoreSnapshot(round: number): SimulationState | null {
+    const snapshot = this.snapshots.get(round);
+    if (!snapshot) return null;
+
+    this.state.currentRound = snapshot.round;
+    this.state.status = snapshot.status;
+    this.state.agentStates = new Map(snapshot.agentStates);
+    this.state.infectionParents = new Map(snapshot.infectionParents);
+    this.state.telemetryHistory = [...snapshot.telemetryHistory];
+    this.state.recentTransmissions = [...snapshot.recentTransmissions];
+    this.state.activeDebunk = snapshot.activeDebunk ? { ...snapshot.activeDebunk } : null;
+    this.queue.restoreSnapshot(snapshot.queueEvents);
+
+    // Restore agent states and psychological parameters
+    for (const [agentId, details] of snapshot.agentDetails.entries()) {
+      const agent = this.agentIndex.get(agentId);
+      if (agent) {
+        agent.state.beliefStatus = details.beliefStatus;
+        agent.state.emotionalState = details.emotionalValence;
+        agent.psychology.emotions = { ...details.emotions };
+        agent.psychology.skepticism = details.skepticism;
+        agent.peerTrustMap = { ...details.peerTrustMap };
+      }
+    }
+
+    return this.state;
+  }
+
+  /**
+   * Jump to target round in O(N) time using snapshot store.
+   */
+  public goToRound(targetRound: number): SimulationState {
+    const res = this.restoreSnapshot(targetRound);
+    if (!res) {
+      throw new Error(`[RumorEngine] No snapshot recorded for round ${targetRound}`);
+    }
+    return res;
+  }
+
+  public getRecordedRounds(): number[] {
+    return Array.from(this.snapshots.keys()).sort((a, b) => a - b);
+  }
+
+  public getMaxRecordedRound(): number {
+    const rounds = this.getRecordedRounds();
+    return rounds.length > 0 ? rounds[rounds.length - 1] : 0;
+  }
+
+  public hasSnapshot(round: number): boolean {
+    return this.snapshots.has(round);
+  }
+
+  /**
+   * Creates an isolated clone of this engine and its society at the current round.
+   * Enables Task 3 counterfactual branching without mutating the parent simulation.
+   */
+  public clone(newSeed?: number): RumorEngine {
+    const clonedSociety: Society = {
+      ...this.society,
+      agents: this.society.agents.map(a => ({
+        ...a,
+        traits: { ...a.traits },
+        state: { ...a.state },
+        metrics: { ...a.metrics },
+        connections: [...a.connections],
+        peerTrustMap: { ...a.peerTrustMap },
+        psychology: {
+          ...a.psychology,
+          emotions: { ...a.psychology.emotions },
+          decisionLogs: a.psychology.decisionLogs ? [...a.psychology.decisionLogs] : [],
+        },
+      })),
+      edges: this.society.edges.map(e => ({ ...e, metadata: e.metadata ? { ...e.metadata } : undefined })),
+      communities: this.society.communities.map(c => ({ ...c, agentIds: c.agentIds ? [...c.agentIds] : [] })),
+      summary: { ...this.society.summary },
+      metrics: { ...this.society.metrics },
+    };
+
+    const clonedEngine = new RumorEngine(clonedSociety, {
+      ...this.config,
+      seed: newSeed ?? (this.config.seed ? this.config.seed + 100 : 142),
+    });
+
+    for (const [r, snap] of this.snapshots.entries()) {
+      clonedEngine.snapshots.set(r, {
+        ...snap,
+        agentStates: new Map(snap.agentStates),
+        agentDetails: new Map(snap.agentDetails),
+        infectionParents: new Map(snap.infectionParents),
+        queueEvents: [...snap.queueEvents],
+        telemetryHistory: [...snap.telemetryHistory],
+        recentTransmissions: [...snap.recentTransmissions],
+      });
+    }
+
+    clonedEngine.restoreSnapshot(this.state.currentRound);
+    return clonedEngine;
   }
 
   public getState(): SimulationState {

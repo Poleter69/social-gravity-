@@ -24,6 +24,7 @@ import { testIngestionParsers } from './ingestion/parsers.test';
 import { testMasterMergerAndSimulation } from './ingestion/masterMergerAndSimulation.test';
 import { runRedditAdapterTests } from './ingestion/reddit/redditAdapter.test';
 import { testRealDatasetIntegration } from './datasets/realDatasetService.test';
+import { testReplayAndCounterfactual } from './simulation/replayAndCounterfactual.test';
 
 console.log('========================================================');
 console.log('  SOCIAL GRAVITY - MASTER SYSTEM TEST SUITE');
@@ -58,6 +59,9 @@ async function run() {
 
     console.log('\n--- SOCIAL GRAVITY V2 -> V1 INTEGRATION ---');
     await testRealDatasetIntegration();
+
+    console.log('\n--- SOCIAL GRAVITY PHASE C: ANALYST REPLAY & COUNTERFACTUAL ---');
+    await testReplayAndCounterfactual();
 
     console.log('\n========================================================');
     console.log('  ALL SOCIETY, PSYCHOLOGY, SIMULATION, AI, V2 GRAPH & INGESTION TESTS PASSED (100%)');

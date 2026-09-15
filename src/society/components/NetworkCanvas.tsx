@@ -7,6 +7,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Society } from '../types/society';
 import { Agent } from '../types/agent';
 import { AgentEpidemicState } from '../../simulation/types';
+import { LayoutService, ComputedNodePosition } from '../workers/layoutService';
 
 interface NetworkCanvasProps {
   society: Society;
@@ -17,13 +18,7 @@ interface NetworkCanvasProps {
   recentTransmissions?: Array<{ sourceId: string; targetId: string; type: 'rumor' | 'debunk' }>;
 }
 
-interface NodePosition {
-  x: number;
-  y: number;
-  radius: number;
-  agent: Agent;
-  color: string;
-}
+type NodePosition = ComputedNodePosition;
 
 export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
   society,
@@ -37,62 +32,32 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
   const [hoveredAgent, setHoveredAgent] = useState<Agent | null>(null);
   const [filterMode, setFilterMode] = useState<'all' | 'influencers' | 'bridges'>('all');
   const nodePositionsRef = useRef<Map<string, NodePosition>>(new Map());
+  const animFrameIdRef = useRef<number | null>(null);
 
-  // Compute 2D clustered layout
+  // Compute 2D clustered layout asynchronously using LayoutService (Task 5: Web Worker / Async chunking)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    const commMap = new Map(society.communities.map((c) => [c.id, c]));
-    const commCount = society.communities.length;
-    const commCenters = new Map<string, { x: number; y: number }>();
-
-    // Arrange community centroids on an orbit
-    const orbitRadius = commCount <= 1 ? 0 : Math.min(width, height) * 0.32;
-    society.communities.forEach((c, idx) => {
-      const angle = commCount > 1 ? (idx / commCount) * 2 * Math.PI - Math.PI / 2 : 0;
-      commCenters.set(c.id, {
-        x: centerX + Math.cos(angle) * orbitRadius,
-        y: centerY + Math.sin(angle) * orbitRadius,
-      });
+    let isMounted = true;
+    LayoutService.computeLayoutAsync(society, canvas.width, canvas.height).then((positions) => {
+      if (!isMounted) return;
+      nodePositionsRef.current = positions;
+      if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
+      animFrameIdRef.current = requestAnimationFrame(draw);
     });
 
-    const positions = new Map<string, NodePosition>();
-    const communityMemberCounts = new Map<string, number>();
+    return () => {
+      isMounted = false;
+      if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
+    };
+  }, [society]);
 
-    // Place nodes around their community centroid with smooth spiral dispersion
-    society.agents.forEach((agent) => {
-      const commCenter = commCenters.get(agent.communityId) || { x: centerX, y: centerY };
-      const comm = commMap.get(agent.communityId);
-      const color = comm?.color || '#00f0ff';
-
-      const commIdx = communityMemberCounts.get(agent.communityId) || 0;
-      communityMemberCounts.set(agent.communityId, commIdx + 1);
-
-      // Adaptive dispersion radius based on community size and total population
-      const clusterBaseRadius = commCount <= 1 ? Math.min(width, height) * 0.38 : (agent.isBridge ? 65 : 45);
-      const angle = (commIdx * 137.5 * Math.PI) / 180; // Golden angle spiral
-      const dist = Math.min(clusterBaseRadius, Math.sqrt(commIdx + 1) * (commCount <= 1 ? 9 : 6.5));
-
-      const x = Math.max(20, Math.min(width - 20, commCenter.x + Math.cos(angle) * dist));
-      const y = Math.max(20, Math.min(height - 20, commCenter.y + Math.sin(angle) * dist));
-      
-      // Scale node radius for large networks so it doesn't become a blob
-      const scaleFactor = society.agents.length > 500 ? 0.6 : society.agents.length > 200 ? 0.8 : 1.0;
-      const baseRadius = agent.isInfluencer ? 6 : agent.isBridge ? 4.5 : 3.5;
-      const radius = Math.max(2, baseRadius * scaleFactor);
-
-      positions.set(agent.id, { x, y, radius, agent, color });
-    });
-
-    nodePositionsRef.current = positions;
-    draw();
-  }, [society, selectedAgent, filterMode, simulationStates, patientZeroIds, recentTransmissions]);
+  // Redraw when simulation state or filter changes (zero position recomputation)
+  useEffect(() => {
+    if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
+    animFrameIdRef.current = requestAnimationFrame(draw);
+  }, [selectedAgent, filterMode, simulationStates, patientZeroIds, recentTransmissions, hoveredAgent]);
 
   const draw = () => {
     const canvas = canvasRef.current;

@@ -3,7 +3,7 @@
  * Epidemiological state definitions, priority transmission events, cascade telemetry, and configuration contracts.
  */
 
-import { InformationSignal } from '../psychology/types';
+import { InformationSignal, EmotionalVector } from '../psychology/types';
 
 export type AgentEpidemicState = 
   | 'SUSCEPTIBLE'  // Has not received the signal
@@ -58,3 +58,26 @@ export interface SimulationState {
   telemetryHistory: RoundTelemetry[];
   recentTransmissions: Array<{ sourceId: string; targetId: string; type: 'rumor' | 'debunk' }>;
 }
+
+export interface AgentStateSnapshot {
+  epidemicState: AgentEpidemicState;
+  beliefStatus: 'uninformed' | 'skeptical' | 'believer' | 'debunker';
+  emotionalValence: 'neutral' | 'anxious' | 'indignant' | 'optimistic';
+  emotions: EmotionalVector;
+  skepticism: number;
+  peerTrustMap: Record<string, number>;
+}
+
+export interface SimulationSnapshot {
+  round: number;
+  timestamp: number;
+  status: SimulationState['status'];
+  agentStates: Map<string, AgentEpidemicState>;
+  agentDetails: Map<string, AgentStateSnapshot>;
+  infectionParents: Map<string, string>;
+  queueEvents: TransmissionEvent[];
+  telemetryHistory: RoundTelemetry[];
+  recentTransmissions: Array<{ sourceId: string; targetId: string; type: 'rumor' | 'debunk' }>;
+  activeDebunk: InformationSignal | null;
+}
+

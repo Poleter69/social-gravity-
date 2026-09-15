@@ -66,4 +66,24 @@ export class TransmissionPriorityQueue {
   public clear(): void {
     this.queue = [];
   }
+
+  /**
+   * Creates a deep-copy snapshot of all pending queue events.
+   */
+  public getSnapshot(): TransmissionEvent[] {
+    return this.queue.map(e => ({
+      ...e,
+      signal: { ...e.signal },
+    }));
+  }
+
+  /**
+   * Restores queue events from a previous snapshot.
+   */
+  public restoreSnapshot(events: TransmissionEvent[]): void {
+    this.queue = events.map(e => ({
+      ...e,
+      signal: { ...e.signal },
+    }));
+  }
 }

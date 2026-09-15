@@ -25,9 +25,11 @@ import {
   Database,
   Radio,
   Zap,
-  Sparkles
+  Sparkles,
+  GitFork,
+  History
 } from 'lucide-react';
-import { DiscoveryEngine, DiscoveryReport, DiscoveryDashboard } from './discovery';
+import { DiscoveryEngine, DiscoveryReport, DiscoveryDashboard, AnalystReplayDashboard } from './discovery';
 import { societyGenerator } from './society/generators/societyGenerator';
 import { SocietyArchetype, Community } from './society/types/community';
 import { Society } from './society/types/society';
@@ -44,6 +46,10 @@ import { WIKIPEDIA_HOAX_FIXTURES } from './datasets/fixtures/wikipediaHoaxFixtur
 import { WikipediaHoaxRecord } from './datasets/types';
 import { RealDatasetModal } from './datasets/components/RealDatasetModal';
 import { LoadedDatasetResult } from './datasets/realDatasetService';
+import { TimelineScrubber } from './simulation/components/TimelineScrubber';
+import { CounterfactualModal } from './simulation/components/CounterfactualModal';
+import { CounterfactualEngine, CounterfactualComparisonResult } from './simulation/counterfactualEngine';
+import { TickEngine } from './graph/engine/tickEngine';
 
 export const App: React.FC = () => {
   // Synthesis parameters
@@ -56,7 +62,7 @@ export const App: React.FC = () => {
 
   // UI state
   const [copied, setCopied] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'topology' | 'communities' | 'agents' | 'telemetry' | 'discovery' | 'json'>('topology');
+  const [activeTab, setActiveTab] = useState<'topology' | 'replay' | 'communities' | 'agents' | 'telemetry' | 'discovery' | 'json'>('topology');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [agentSearch, setAgentSearch] = useState<string>('');
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
@@ -65,6 +71,12 @@ export const App: React.FC = () => {
   // Real Dataset Ingestion & V2 State
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState<boolean>(false);
   const [v2LoadedData, setV2LoadedData] = useState<LoadedDatasetResult | null>(null);
+  const [liveDynamicDecay, setLiveDynamicDecay] = useState<boolean>(true);
+
+  // Counterfactual & Replay State
+  const [isCounterfactualOpen, setIsCounterfactualOpen] = useState<boolean>(false);
+  const [counterfactualResult, setCounterfactualResult] = useState<CounterfactualComparisonResult | null>(null);
+  const wasPlayingBeforeDrag = React.useRef<boolean>(false);
 
   // Discovery Engine state
   const [discoveryReport, setDiscoveryReport] = useState<DiscoveryReport | null>(null);
@@ -143,6 +155,31 @@ export const App: React.FC = () => {
     );
 
     const initial = newEngine.start(rumorSignal, seedIds);
+
+    // Wire Dynamic Graph Engine (Task 4: Edge Dynamics & Temporal Decay)
+    newEngine.onTransmission = (sourceId, targetId) => {
+      if (v2LoadedData?.dynamicGraph) {
+        try {
+          v2LoadedData.dynamicGraph.recordInteraction(sourceId, targetId);
+        } catch {
+          // ignore if missing
+        }
+      }
+    };
+
+    newEngine.onRoundStep = () => {
+      if (v2LoadedData?.dynamicGraph && liveDynamicDecay) {
+        try {
+          const tickEngine = new TickEngine(v2LoadedData.dynamicGraph);
+          tickEngine.tick();
+          const freshMetrics = v2LoadedData.dynamicGraph.getMetrics();
+          setV2LoadedData(prev => prev ? { ...prev, v2Metrics: freshMetrics } : null);
+        } catch {
+          // ignore
+        }
+      }
+    };
+
     setEngine(newEngine);
     setSimState({ ...initial });
     setIsPlaying(false);
@@ -164,6 +201,82 @@ export const App: React.FC = () => {
     }
     const next = engine.step();
     setSimState({ ...next });
+  };
+
+  // --- REPLAY & TIME-TRAVEL HANDLERS (Task 1 & 2) ---
+  const handleScrubToRound = (round: number) => {
+    if (!engine) return;
+    try {
+      if (engine.hasSnapshot(round)) {
+        const next = engine.goToRound(round);
+        setSimState({ ...next });
+      }
+    } catch (e) {
+      console.error('Failed to scrub to round:', e);
+    }
+  };
+
+  const handleStepBackward = () => {
+    if (!engine || !simState || simState.currentRound <= 0) return;
+    handleScrubToRound(simState.currentRound - 1);
+  };
+
+  const handleStepForward = () => {
+    if (!engine || !simState) return;
+    const nextRound = simState.currentRound + 1;
+    if (engine.hasSnapshot(nextRound)) {
+      handleScrubToRound(nextRound);
+    } else {
+      handleStepSimulation();
+    }
+  };
+
+  const handleJumpToStart = () => {
+    handleScrubToRound(0);
+  };
+
+  const handleJumpToEnd = () => {
+    if (!engine) return;
+    handleScrubToRound(engine.getMaxRecordedRound());
+  };
+
+  // --- COUNTERFACTUAL BRANCHING HANDLERS (Task 3) ---
+  const handleLaunchCounterfactual = () => {
+    if (!engine || !simState) return;
+    setIsPlaying(false);
+    const result = CounterfactualEngine.runStandardComparison(engine, 8);
+    setCounterfactualResult(result);
+    setIsCounterfactualOpen(true);
+  };
+
+  const handleApplyCounterfactualBranch = (branchId: string) => {
+    if (!engine || !simState) return;
+    if (branchId === 'bridge_inoculation') {
+      const bridgeCandidates = activeSociety.agents
+        .filter(a => a.isBridge && simState.agentStates.get(a.id) !== 'BELIEVER')
+        .map(a => a.id);
+      const targets = bridgeCandidates.slice(0, 3);
+      const debunkSignal = WikipediaHoaxAdapter.createDebunkingSignal(
+        selectedHoax,
+        'bridge_inoculator',
+        simState.currentRound
+      );
+      const next = engine.injectDebunking(debunkSignal, targets);
+      setSimState({ ...next });
+    } else if (branchId === 'influencer_containment') {
+      const influencerCandidates = [...activeSociety.agents]
+        .filter(a => a.isInfluencer && simState.agentStates.get(a.id) !== 'BELIEVER')
+        .sort((a, b) => b.traits.influence - a.traits.influence)
+        .slice(0, 3)
+        .map(a => a.id);
+      const debunkSignal = WikipediaHoaxAdapter.createDebunkingSignal(
+        selectedHoax,
+        'influencer_inoculator',
+        simState.currentRound
+      );
+      const next = engine.injectDebunking(debunkSignal, influencerCandidates);
+      setSimState({ ...next });
+    }
   };
 
   const handleResetSimulation = () => {
@@ -313,6 +426,15 @@ export const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleLaunchCounterfactual}
+              disabled={!simState || simState.telemetryHistory.length === 0}
+              className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white text-xs font-mono font-bold transition-all shadow-glow-purple disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Launch 3-way counterfactual branching comparison from current tick"
+            >
+              <GitFork className="h-3.5 w-3.5" />
+              <span>Branch Analysis</span>
+            </button>
             <button
               onClick={() => handleRunDiscovery(true)}
               disabled={isAnalyzing}
@@ -574,6 +696,21 @@ export const App: React.FC = () => {
                       className="w-full accent-cyan-400 bg-gravity-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                     />
                   </div>
+
+                  {/* Dynamic Graph Edge Decay Toggle (Task 4) */}
+                  <div className="pt-2 border-t border-gravity-800 flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-slate-400">Dynamic Edge Decay (V2)</span>
+                    <button
+                      onClick={() => setLiveDynamicDecay(!liveDynamicDecay)}
+                      className={`px-2 py-0.5 rounded font-bold text-[10px] transition-all cursor-pointer ${
+                        liveDynamicDecay
+                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/50'
+                          : 'bg-gravity-900 text-slate-500 border border-gravity-800'
+                      }`}
+                    >
+                      {liveDynamicDecay ? 'ENABLED' : 'DISABLED'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Hoax Signal Selector (Wikipedia Empirical Fixtures) */}
@@ -797,6 +934,17 @@ export const App: React.FC = () => {
                 <span>Simulation Topology Canvas</span>
               </button>
               <button
+                onClick={() => setActiveTab('replay')}
+                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors flex items-center space-x-1.5 ${
+                  activeTab === 'replay'
+                    ? 'border-purple-400 text-purple-300'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <History className="h-3.5 w-3.5 text-purple-400" />
+                <span>Analyst Replay ({simState ? simState.telemetryHistory.length : 0})</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('communities')}
                 className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors ${
                   activeTab === 'communities'
@@ -867,8 +1015,33 @@ export const App: React.FC = () => {
                       patientZeroIds={simState?.patientZeroIds}
                       recentTransmissions={simState?.recentTransmissions}
                     />
+
+                    {/* Timeline Scrubber Component (Task 1 & 2) */}
+                    <div className="mt-3">
+                      <TimelineScrubber
+                        currentRound={simState ? simState.currentRound : 0}
+                        maxRecordedRound={engine ? engine.getMaxRecordedRound() : 0}
+                        isPlaying={isPlaying}
+                        telemetryHistory={simState ? simState.telemetryHistory : []}
+                        onScrub={handleScrubToRound}
+                        onTogglePlay={handleTogglePlay}
+                        onStepForward={handleStepForward}
+                        onStepBackward={handleStepBackward}
+                        onJumpToStart={handleJumpToStart}
+                        onJumpToEnd={handleJumpToEnd}
+                        onDragStart={() => {
+                          wasPlayingBeforeDrag.current = isPlaying;
+                          setIsPlaying(false);
+                        }}
+                        onDragEnd={() => {
+                          if (wasPlayingBeforeDrag.current) {
+                            setIsPlaying(true);
+                          }
+                        }}
+                      />
+                    </div>
                     <div className="mt-2 text-[11px] font-mono text-slate-500 text-center">
-                      Tip: Click any node to open its cognitive dossier and evaluate live information signals against its neighborhood ties.
+                      Tip: Click any node to open its cognitive dossier, or drag timeline slider to replay historical cascade progression.
                     </div>
                   </div>
 
@@ -890,6 +1063,18 @@ export const App: React.FC = () => {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Analyst Replay Center (Task 6) */}
+              {activeTab === 'replay' && (
+                <AnalystReplayDashboard
+                  simState={simState}
+                  society={activeSociety}
+                  currentRound={simState ? simState.currentRound : 0}
+                  maxRecordedRound={engine ? engine.getMaxRecordedRound() : 0}
+                  onLaunchCounterfactual={handleLaunchCounterfactual}
+                  onScrubToRound={handleScrubToRound}
+                />
               )}
 
               {activeTab === 'communities' && (
@@ -1072,6 +1257,14 @@ export const App: React.FC = () => {
         isOpen={isDatasetModalOpen}
         onClose={() => setIsDatasetModalOpen(false)}
         onDatasetLoaded={handleDatasetLoaded}
+      />
+
+      {/* Counterfactual Branching Matrix Modal (Task 3) */}
+      <CounterfactualModal
+        isOpen={isCounterfactualOpen}
+        onClose={() => setIsCounterfactualOpen(false)}
+        result={counterfactualResult}
+        onApplyBranch={handleApplyCounterfactualBranch}
       />
     </div>
   );
