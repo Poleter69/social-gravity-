@@ -1,0 +1,212 @@
+﻿SOCIAL GRAVITY — PHASE D: REAL EMOTION INTELLIGENCE
+COMPLETION REPORT
+Generated: 2026-09-15
+=======================================================
+
+PHASE OBJECTIVE
+---------------
+Replace all heuristic emotion detection with a real local NLP pipeline
+(GoEmotions dataset + Transformers.js) and make emotion a first-class
+input to trust, risk, conformity, and cascade prediction.
+
+MISSION STATUS: COMPLETE
+All tests pass 100%. Clean Vite production build. Three commits merged.
+
+
+=======================================================
+WHAT WAS BUILT
+=======================================================
+
+1. LOCAL NLP INFERENCE ENGINE (src/nlp/)
+-----------------------------------------
+File: src/nlp/emotionEngine.ts
+  - EmotionEngine singleton class
+  - Primary backend: @xenova/transformers (distilbert-base-uncased-go-emotions)
+    loaded via dynamic import - never blocks tests or startup
+  - Fallback backend: calibrated lexicon (GO_EMOTIONS_LEXICON)
+    zero-network, deterministic, works in any environment
+  - Dual-mode design: backend field = 'transformer' | 'lexicon' | 'hybrid'
+  - Methods: predict(text) [async], predictSync(text), predictBatch(texts),
+    clearCache(), getStats()
+
+File: src/nlp/types.ts
+  - GoEmotionLabel: 27-class union type (full Google GoEmotions taxonomy)
+  - GoEmotionTaxonomy: maps each label to category + valence + arousal
+  - EmotionProfile: primary emotion, dominantEmotion alias, confidence,
+    intensity, emotionVector (Record<GoEmotionLabel, number>),
+    topEmotions[], category, valence, polarity alias, arousal
+  - EmotionEngineStats: requestsProcessed, cacheHits, hitRate, avgLatencyMs, backend
+
+File: src/nlp/cache.ts
+  - LRU cache (max 500 entries) with getStats() -> { size, hitRate, hits, misses }
+  - clearCache() exposed for test isolation
+
+File: src/nlp/lexiconData.ts
+  - GO_EMOTIONS_LEXICON: 50+ sentiment-tagged entries
+  - INTENSIFIERS: amplify emotion scores (e.g. 'horrifying' x 1.8)
+  - NEGATIONS: invert scores (e.g. 'not good' -> negative)
+  - New entries this session: amazing, breakthrough, love, loving, tragedy, disaster
+  - Fixed: 'relieved' was mapped to invalid 'calm' key -> corrected to 'joy'
+
+
+2. EMOTION-DRIVEN PSYCHOLOGY RULES
+------------------------------------
+BehavioralDecisionEngine (src/psychology/decisionEngine.ts)
+  - Resolves EmotionProfile from signal.emotionProfile or live inference
+    via EmotionEngine.getInstance().predictSync(signal.content || topic)
+  - GoEmotions profile passed to all three rule modules
+
+trustReinforcement.ts (evaluateSenderCredibility)
+  - If signalEmotion.category === 'positive' and valence > 0.3:
+    sender trust boosted by +0.08 (admiration/gratitude amplification)
+
+socialProof.ts (evaluateSocialProof)
+  - emotion.intensity > 0.75 lowers Asch conformity threshold by 0.10
+    (high-arousal emotion makes agents more susceptible to social proof)
+
+fearAmplification.ts (evaluateFearAmplification)
+  - If signalEmotion.primaryEmotion is fear, anger, nervousness, or grief:
+    fear amplification applied proportional to emotion.intensity
+  - Results in elevated factors.fearLevel in DecisionFactors
+
+
+3. EMOTIONAL INTELLIGENCE DASHBOARD
+-------------------------------------
+File: src/discovery/components/EmotionalIntelligenceDashboard.tsx
+  - Sections:
+    (a) Live Inference Panel: type text -> real-time GoEmotions prediction
+    (b) Society Emotion Heatmap: per-community emotion distribution
+    (c) Escalation Drivers Table: ranks agents by emotional intensity x reach
+    (d) Engine Status: backend mode, cache hit rate, avg latency, total requests
+
+App.tsx:
+  - Added 'Emotional Intelligence' tab with Heart icon (pink accent)
+  - Conditional render: {activeTab === 'emotion' && <EmotionalIntelligenceDashboard .../>}
+
+
+=======================================================
+TEST RESULTS
+=======================================================
+
+Phase D Test Suite: emotionEngine.test.ts (11 stages)
+  Stage 1  -- GoEmotions NLP inference & caching: PASS
+  Stage 2  -- Async predict() resolves valid EmotionProfile: PASS
+  Stage 3  -- Batch inference (4 texts) returns 4 profiles: PASS
+  Stage 4  -- Async/await correctness: PASS
+  Stage 5  -- Curiosity emotion detected: PASS
+  Stage 6  -- Gratitude emotion detected: PASS
+  Stage 7  -- Fear emotion detected: PASS
+  Stage 8  -- clearCache() resets cache hits: PASS
+  Stage 9  -- Psychological Modulation (fear/trust/social-proof rules): PASS
+  Stage 10 -- Emotion-Driven Rumor Diffusion (2 engine types): PASS
+  Stage 11 -- Deterministic Replay Guarantee (same-seed societies): PASS
+
+TOTAL PHASE D SECTIONS: 11 / 11 PASS
+
+Master suite output:
+  ALL SOCIETY, PSYCHOLOGY, SIMULATION, AI, V2 GRAPH & EMOTION TESTS PASSED (100%)
+  npm test exit code: 0
+
+
+=======================================================
+BUILD RESULTS
+=======================================================
+
+Command: tsc && vite build
+
+TypeScript errors fixed:
+  - TS6133: Removed unused idx parameter in EmotionalIntelligenceDashboard.tsx:381
+  - TS2774: Changed transformers.pipeline truthy check to
+            typeof transformers.pipeline === 'function' in emotionEngine.ts:63
+
+Build output:
+  dist/index.html                    0.52 kB  gzip:  0.34 kB
+  dist/assets/index-*.css            7.61 kB  gzip:  2.19 kB
+  dist/assets/index-*.js           671.65 kB  gzip: 211.81 kB
+  Built in 11.46s
+  npm run build exit code: 0
+
+
+=======================================================
+GIT COMMITS
+=======================================================
+
+Commit 1: feat(phase-d): integrate local GoEmotions inference engine + test suite
+  SHA: 060e8ed
+  Files: src/nlp/ (6 new), tests/nlp/emotionEngine.test.ts, tests/runAll.ts,
+         src/App.tsx, src/discovery/components/EmotionalIntelligenceDashboard.tsx
+  +1,588 lines, -4 lines
+
+Commit 2: feat: emotion-driven psychology and diffusion
+  SHA: 6ccb5af
+  Files: src/psychology/ (5 files modified)
+  +132 lines, -31 lines
+
+Commit 3: feat: emotional intelligence dashboard
+  SHA: 7e70771
+  Files: src/discovery/ (4 files)
+  +136 lines
+
+
+=======================================================
+ARCHITECTURE DECISIONS
+=======================================================
+
+Decision 1 -- Dual-Mode NLP (no hard API dependency)
+  Transformers.js loaded via dynamic import with try/catch.
+  If model fails to download, lexicon fallback activates automatically.
+
+Decision 2 -- Singleton EmotionEngine
+  All callers share one instance with shared LRU cache.
+  Max 500 cache entries. Prevents redundant inference.
+
+Decision 3 -- EmotionProfile as InformationSignal field
+  Signals carry pre-computed emotionProfile from ingestion pipeline,
+  bypassing re-inference at decision time when available.
+
+Decision 4 -- DecisionFactors is a flat object NOT an array
+  factors: { senderTrust, neighborAgreementRatio, socialProofPressure,
+  fearLevel, uncertaintyLevel, confidenceLevel, riskTolerance,
+  effectiveCredibility, emotionIntensity?, primaryEmotion? }
+  Tests must assert on flat properties or check reasoningSteps[].
+
+Decision 5 -- RumorEngine API contract
+  Start:   engine.start(signal, [patientZeroIds])
+  Advance: state = engine.step()  -> returns SimulationState
+  Count believers: [...state.agentStates.values()].filter(s => s === 'BELIEVER').length
+
+
+=======================================================
+KNOWN ISSUES / OPEN ITEMS
+=======================================================
+
+1. Chunk size warning: dist/assets/index-*.js is 671 kB (211 kB gzip).
+   @xenova/transformers adds weight. Fix in Phase E: use manualChunks
+   to split transformers into an async chunk.
+
+2. ONNX eval() warning: ort-web.min.js uses eval(). Upstream behaviour.
+
+3. GoEmotions model download: ~80 MB on first load. Subsequent runs use
+   browser cache. Headless environments use lexicon fallback automatically.
+
+
+=======================================================
+PHASE D EXIT CRITERIA -- ALL MET
+=======================================================
+
+[OK] EmotionEngine singleton: predict / predictSync / predictBatch
+[OK] LRU cache with hit-rate tracking
+[OK] Calibrated lexicon fallback (zero-network, deterministic)
+[OK] GoEmotions profile passed to all three psychology rules
+[OK] Trust, fear, social-proof modulated by real emotion intensity
+[OK] EmotionalIntelligenceDashboard mounted in App.tsx as new tab
+[OK] Full 11-section async test suite: all sections pass
+[OK] npm test: exit code 0 (100% pass, all suites)
+[OK] npm run build: exit code 0 (zero TypeScript errors, clean bundle)
+[OK] 3 atomic git commits on master branch
+
+NEXT SUGGESTED PHASE: Phase E -- Production Hardening
+  - Code-split @xenova/transformers into async chunk (reduce initial JS)
+  - Add streaming WebSocket simulation mode
+  - Add PDF/CSV export for analyst reports
+  - Add user-defined scenarios (custom rumor + topology editor)
