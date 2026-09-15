@@ -212,6 +212,36 @@ export class PatternDetector {
       }
     }
 
+    // --- 7. Pattern G: Emotional Polarization & Escalation Dynamics (Stage 7) ---
+    if (telemetry.emotionalPolarizationIndex && telemetry.emotionalPolarizationIndex >= 0.35) {
+      cards.push({
+        id: 'hyp-emotional-polarization',
+        title: 'Affective Polarization Diverged Sub-Communities into Distinct Emotional Factions',
+        category: 'emotional_contagion',
+        evidence: `Emotional divergence index reached ${telemetry.emotionalPolarizationIndex}. Certain sub-clusters exhibited severe threat vigilance (fear/anger) while isolated cliques remained indifferent or calm.`,
+        mechanism: `Affective Echo Chambers: Homophilous social ties filter and amplify congruent emotional signals (Damasio's Somatic Marker & Festinger's Cognitive Dissonance). Exposure to polarized out-group rhetoric accelerates within-group emotional alignment.`,
+        confidence: 0.93,
+        confidenceLabel: 'Very High',
+        suggestedExperiment: `Introduce calming, fact-oriented bridge messengers to test if cross-community emotional polarization can be neutralized before belief hardening.`,
+        metricsSnapshot: {
+          'Emotional Polarization Index': telemetry.emotionalPolarizationIndex,
+          'Community Count': telemetry.communityCount,
+          'Echo Chamber Polarization': telemetry.echoChamberPolarization,
+        },
+      });
+
+      inferredObservations.push(
+        `High emotional divergence across communities created fertile ground for entrenched narrative polarization.`
+      );
+    }
+
+    if (telemetry.escalationForecasts && telemetry.escalationForecasts.length > 0) {
+      telemetry.escalationForecasts.forEach((forecast) => {
+        measuredFacts.push(`[Forecast - ${forecast.severity}] ${forecast.finding} (${forecast.evidence})`);
+        inferredObservations.push(forecast.evidence);
+      });
+    }
+
     // Determine Top Discovery
     const topDiscovery = cards.length > 0 
       ? cards[0].title 

@@ -11,3 +11,4 @@ export * from './ollamaClient';
 export * from './discoveryEngine';
 export * from './components/DiscoveryDashboard';
 export * from './components/AnalystReplayDashboard';
+export * from './components/EmotionalIntelligenceDashboard';

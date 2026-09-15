@@ -110,6 +110,96 @@ export class TelemetryCollector {
       }
     }
 
+    // 5. Emotional Heatmap & Polarization Analysis (Stage 7)
+    const emotionalHeatmap: Record<string, Record<string, number>> = {};
+    const communityNegativeScores: number[] = [];
+
+    society.communities.forEach((comm) => {
+      let totalFear = 0;
+      let totalAnger = 0;
+      let totalJoy = 0;
+      let totalCuriosity = 0;
+      let totalCalm = 0;
+      const count = comm.agentIds.length || 1;
+
+      comm.agentIds.forEach((agentId) => {
+        const agent = society.agents.find((a) => a.id === agentId);
+        if (agent) {
+          totalFear += agent.psychology.emotions.fear || 0;
+          totalAnger += agent.psychology.emotions.anger || 0;
+          totalJoy += agent.psychology.emotions.calm > 0.5 ? 0.6 : 0.1;
+          totalCuriosity += agent.psychology.emotions.uncertainty || 0.2;
+          totalCalm += agent.psychology.emotions.calm || 0.5;
+        }
+      });
+
+      const avgFear = Number((totalFear / count).toFixed(3));
+      const avgAnger = Number((totalAnger / count).toFixed(3));
+      const avgJoy = Number((totalJoy / count).toFixed(3));
+      const avgCuriosity = Number((totalCuriosity / count).toFixed(3));
+      const avgCalm = Number((totalCalm / count).toFixed(3));
+
+      emotionalHeatmap[comm.id] = {
+        fear: avgFear,
+        anger: avgAnger,
+        joy: avgJoy,
+        curiosity: avgCuriosity,
+        calm: avgCalm,
+      };
+
+      communityNegativeScores.push(avgFear + avgAnger);
+    });
+
+    // Compute Emotional Polarization Index as variance of negative emotional charge across clusters
+    let emotionalPolarizationIndex = 0;
+    if (communityNegativeScores.length > 1) {
+      const meanNeg = communityNegativeScores.reduce((a, b) => a + b, 0) / communityNegativeScores.length;
+      const variance = communityNegativeScores.reduce((acc, val) => acc + Math.pow(val - meanNeg, 2), 0) / communityNegativeScores.length;
+      emotionalPolarizationIndex = Number(Math.min(1.0, Math.sqrt(variance) * 2.5).toFixed(3));
+    }
+
+    // 6. Escalation Forecast Generation
+    const escalationForecasts: ExperimentTelemetry['escalationForecasts'] = [];
+
+    // Check Bridge Fear Escalation
+    const infectedFearfulBridges = society.agents.filter(
+      (a) => a.isBridge && simState.agentStates.get(a.id) === 'BELIEVER' && a.psychology.emotions.fear >= 0.35
+    );
+    if (infectedFearfulBridges.length >= 1) {
+      escalationForecasts.push({
+        severity: infectedFearfulBridges.length >= 3 ? 'CRITICAL' : 'ELEVATED',
+        finding: 'Fear is rapidly crossing bridge communities.',
+        evidence: `${infectedFearfulBridges.length} boundary-spanning bridge nodes infected with heightened threat vigilance (avg fear: ${(infectedFearfulBridges.reduce((s, a) => s + a.psychology.emotions.fear, 0) / infectedFearfulBridges.length * 100).toFixed(0)}%).`,
+        affectedNodes: infectedFearfulBridges.map((a) => a.id),
+        dominantEmotion: 'fear',
+      });
+    }
+
+    // Check Influencer Anger Concentration
+    const angryInfluencers = society.agents.filter(
+      (a) => a.isInfluencer && simState.agentStates.get(a.id) === 'BELIEVER' && ((a.psychology.emotions.anger || 0) >= 0.30 || a.state.emotionalState === 'indignant')
+    );
+    if (angryInfluencers.length >= 1) {
+      escalationForecasts.push({
+        severity: angryInfluencers.length >= 2 ? 'CRITICAL' : 'ELEVATED',
+        finding: `Anger is concentrated around ${angryInfluencers.length} influencer node${angryInfluencers.length > 1 ? 's' : ''}.`,
+        evidence: `Gravitational hubs (${angryInfluencers.map((a) => a.name).join(', ')}) expressing indignation/anger, accelerating viral cascade velocity.`,
+        affectedNodes: angryInfluencers.map((a) => a.id),
+        dominantEmotion: 'anger',
+      });
+    }
+
+    // Check Curiosity Spread
+    if (echoChamberPolarization <= 0.40 && (latestRound?.believerCount ?? 0) >= 3) {
+      escalationForecasts.push({
+        severity: 'LOW',
+        finding: 'Curiosity is spreading without polarization.',
+        evidence: `Low cluster polarization (${(echoChamberPolarization * 100).toFixed(0)}%) indicates informational inquiry across boundaries without hostile affective divergence.`,
+        affectedNodes: [],
+        dominantEmotion: 'curiosity',
+      });
+    }
+
     const telemetry: ExperimentTelemetry = {
       id: `exp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
@@ -156,6 +246,10 @@ export class TelemetryCollector {
       communityOutcomes,
       bridgeInfectionRatio,
       influencerInfectionRatio,
+
+      emotionalHeatmap,
+      emotionalPolarizationIndex,
+      escalationForecasts,
     };
 
     TelemetryCollector.experiments.push(telemetry);

@@ -69,6 +69,17 @@ export interface ExperimentTelemetry {
   // Structural impact
   bridgeInfectionRatio: number; // Ratio of bridge nodes that became believers
   influencerInfectionRatio: number; // Ratio of influencers that became believers
+
+  // Emotion Intelligence Metrics (Stage 7)
+  emotionalHeatmap?: Record<string, Record<string, number>>; // communityId -> { emotion: percentage }
+  emotionalPolarizationIndex?: number; // [0, 1] divergence of emotions across communities
+  escalationForecasts?: Array<{
+    severity: 'CRITICAL' | 'ELEVATED' | 'MODERATE' | 'LOW';
+    finding: string;
+    evidence: string;
+    affectedNodes: string[];
+    dominantEmotion: string;
+  }>;
 }
 
 export interface ResilienceScore {
