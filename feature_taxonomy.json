@@ -1,0 +1,67 @@
+{
+  "dataset": "SNAP Facebook Social Circles",
+  "totalCategories": 12,
+  "categories": {
+    "birthday": {
+      "description": "User birthday and birth year indicators",
+      "properties": ["anonymized feature"]
+    },
+    "education": {
+      "description": "Educational background, academic concentrations, and institutions",
+      "properties": [
+        "classes",
+        "concentration",
+        "degree",
+        "school",
+        "type",
+        "year"
+      ]
+    },
+    "work": {
+      "description": "Professional history, employers, positions, and tenures",
+      "properties": [
+        "employer",
+        "position",
+        "location",
+        "start_date",
+        "end_date"
+      ]
+    },
+    "location": {
+      "description": "Geographical residence and locality identifiers",
+      "properties": ["id"]
+    },
+    "hometown": {
+      "description": "User origin and hometown identifiers",
+      "properties": ["id"]
+    },
+    "languages": {
+      "description": "Spoken and written language proficiencies",
+      "properties": ["id"]
+    },
+    "gender": {
+      "description": "Anonymized gender classifications",
+      "properties": ["anonymized feature"]
+    },
+    "last_name": {
+      "description": "Anonymized shared surname clusters",
+      "properties": ["anonymized feature"]
+    },
+    "first_name": {
+      "description": "Anonymized given name indicators",
+      "properties": ["anonymized feature"]
+    },
+    "locale": {
+      "description": "Regional language locale settings",
+      "properties": ["anonymized feature"]
+    },
+    "political": {
+      "description": "Civic and political inclination tags",
+      "properties": ["anonymized feature"]
+    },
+    "religion": {
+      "description": "Religious affiliation indicators",
+      "properties": ["anonymized feature"]
+    }
+  }
+}

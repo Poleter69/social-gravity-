@@ -1,0 +1,502 @@
+This actually makes the project better. If you're building this solo in 10 days, I'd go 100% local-first. No paid APIs, no OpenAI API, no Anthropic, no Kafka, no backend until later. Everything runs on your laptop with open-source models.
+
+The MVP becomes a desktop/web research simulator.
+
+# Social Gravity v0.1 — Local-First Build Checklist (10 Days)
+
+> Goal: Build a research-grade simulator where users can create a virtual society, start a rumor, and watch how trust changes its spread.
+
+## Final Stack (No APIs)
+
+|
+Purpose
+
+|
+
+Tool
+
+|
+| --- | --- |
+|
+
+Frontend
+
+|
+
+React + TypeScript + Vite
+
+|
+|
+
+UI
+
+|
+
+Tailwind CSS
+
+|
+|
+
+Network Graph
+
+|
+
+React Force Graph
+
+|
+|
+
+Charts
+
+|
+
+Recharts
+
+|
+|
+
+Simulation
+
+|
+
+Python + Mesa
+
+|
+|
+
+Local AI
+
+|
+
+Ollama (Llama 3.2 3B)
+
+|
+|
+
+Emotion Model
+
+|
+
+Local Hugging Face model
+
+|
+|
+
+Storage
+
+|
+
+JSON files
+
+|
+|
+
+Packaging
+
+|
+
+Docker (optional later)
+
+|
+
+> Everything works offline.
+
+# 10-Day Checklist
+
+## Day 1 — Foundation
+
+* Create React + Vite project.
+
+* Set up Tailwind.
+
+* Create dark "Palantir" theme.
+
+* Design landing page.
+
+Deliverable: Beautiful empty dashboard.
+
+![Palantir for tracking your uber eats and fedex deliveries | Bilawal Sidhu | 11 comments](https://images.openai.com/static-rsc-4/2oUR0n2jymHJ2xQKS5WxF4hcPAWV_j7zKKeDOjGyLl25-J2MlALubt41Fcj6n6PiSkyRhtg-_gfjDkfKibc8ykZmv_Y5r5tKGCH0lcBB2fBNIYF6EVDLItr0QQ0xG3I-RTKf0bBF4npGHEAOf-c4Ed4mLPSKvfwLkmMMx_GJDIY?purpose=inline)
+
+![Futurism - Tailwind Dashboard Futuristic Sci-Fi - Tailwind dashboard](https://images.openai.com/static-rsc-4/Mn5EfNXlAfFdMxSlu9MBYz-N8jSEBY6pVNxw5-vyY3P5Lg0mx8WVmPDv-IwVbgJo-QstoZD6R4fpb3wsDoiUaQp8tAmmvxfHJvXxX1vqEUYtkCGSryv3ulAEeFn4Lza429hVBP3uZ-QEa8BhK643nZXkTzkHgtnIq6GQU-5_nRg?purpose=inline)
+
+![ChatGPT: The rise of AI Agents.. Note: I have not used Palantir AIP or… | by Manaaki Walker Tepania | Medium](https://images.openai.com/static-rsc-4/OkmTt0xczwRoJkMG88XIDaVgLpSwpnSVEpwbE-ldwipZrb4HE5ZIzKSBoerxcqtt_WubpLYnP158RBLMgM1jtHPCibtlfkNxb5EWYv66T8Gd14sZObL5wIcihCapNu33ExVkrGedzBad3wDLm7YHsdhbejyHJfkqBIZZyCbPRbQ?purpose=inline)
+
+5
+
+## Day 2 — Society Generator
+
+Build the first simulation.
+
+* Generate 500–1000 agents.
+
+* Give each:
+
+  * Trust
+
+  * Influence
+
+  * Conformity
+
+  * Risk Tolerance
+
+* Generate network types:
+
+  * Random
+
+  * Small World
+
+  * Scale Free
+
+Deliverable: Interactive network graph.
+
+![Philosophical Technologies](https://images.openai.com/static-rsc-4/3UGCHm0qK3vTf41fsHZQopG0dRhqG2sle-Ss5FyYkMxZkCLbBXps6isHz08mZJGeM6pGCPuLBPnszeQ8JjKHmGlnDajXZtlc0XsZUbFWt9pFQvKZR9RQ9ZPoISXtpVb0MDV7R3koBvL3hdGhmMrvrYOrD4NZqkAQKozlWuJvOrg?purpose=inline)
+
+![13. Graph Generation — Matemáticas Discreta IA](https://images.openai.com/static-rsc-4/t1TDIsLa045RRkeCgBSDExAi4qWjAwa3YGMS6BX5vtwVtrkwc1w3JTH_e_NZ4y6QAfngv67OFvn1k99o1jPC91_0iyg8jM_NPQ3Y0AjSLJR4PCcc8YMq6tnJecQYQmoSnNrsU_B-rInsaF80oGB-sxAlMRP4jEtZBYet1SnIbmk?purpose=inline)
+
+![dictionary - Python: how to generate a scale-free network with pre-defined node positions? - Stack Overflow](https://images.openai.com/static-rsc-4/g5mTMzd8ilepnCeA4NXZSMaZpM7y8wNo8uOHQoPLA0ame3Teh8hw6MChliTYX-sWBnd_zNZjzyJ6AxkzgaJn006dVIHm2IbAh0IQhly77CXi1mlmrMaVg-4zCUxMSEGcNuwxSuUxLa95fCKW83lHGN2VA2VPx6sLX2AHPBQxLzo?purpose=inline)
+
+6
+
+## Day 3 — Rumor Engine
+
+The first real experiment.
+
+Rules:
+
+* Person receives rumor.
+
+* Decides whether to believe it.
+
+* Trust affects sharing.
+
+* Conformity affects sharing.
+
+Deliverable: Animated rumor spreading.
+
+## Day 4 — Psychology Rules
+
+Don't use AI yet.
+
+Implement real psychology.
+
+|
+Theory
+
+|
+
+Rule
+
+|
+| --- | --- |
+|
+
+Asch
+
+|
+
+People copy neighbors.
+
+|
+|
+
+Prospect Theory
+
+|
+
+Fear increases sharing.
+
+|
+|
+
+Social Proof
+
+|
+
+More neighbors believing = higher adoption.
+
+|
+
+Everything is mathematical.
+
+## Day 5 — Live Dashboard
+
+Add:
+
+* Trust Heatmap
+
+* Rumor Progress Bar
+
+* Believers Counter
+
+* Network Replay
+
+This becomes the wow factor.
+
+![Enhanced Trust Propagation Mechanism for Trust Management in the Social Internet of Things: IETE Journal of Research: Vol 71 , No 6  - Get Access](https://images.openai.com/static-rsc-4/mriwQHb1V9CEmIuwCNfK_JsPzYxmT7LSNZs6Ymx1tnd9CrsutzE6GeLRMBLfmXdj0KoW7DFggTfRA4JZOlOZK6Z_KeNtr7RuzeKYN6Ks6uo-81rnizhf_lq3-hQ8Gpxp4lyRsaFFuq2biWm1ArukWDIGAKho-JTRIPf0URSaXt0?purpose=inline)
+
+![【論文瞬読】噂はどこまで広がるか？LLMエージェントで再現するリアルな情報拡散シミュレーション｜AI Nest](https://images.openai.com/static-rsc-4/4Axh2PdD0aeVdZ0AKAAjd4f7WZL_BvvFb2Ccshe1nIQmFlhqtLdX2AD7I7eNdGRf9Sn5RgElAK8nRTGfI3k03SreOL8yezC53q4Uo1PuK8IxYRFbTAAdmnytThxBT4udWMsHobMbghavscNBE4yrhoAjV5BCFwLKIfBANkas5fc?purpose=inline)
+
+![Neon Night-Mode Data Dashboard with Charts - Free AI Stock Photo | PromptsZone](https://images.openai.com/static-rsc-4/-C29jomGJn68Cpz4aCu8UWZTdfi_B2L5rdYaW_B9eRFvc_ZDyPF7-VDLF1_EtNrcsHxoj1HzMXhjX_R1eaehOsL0g7hbMeHDWn7h43ZnctxFs1BCw0BU1GzJcTEmDSIDwdDmPl8fWl9hNeJzNRagqXPanqStt-2zOE2-otu_Tjo?purpose=inline)
+
+5
+
+## Day 6 — Intervention Panel
+
+Add sliders.
+
+* Trust
+
+* Influencers
+
+* Rumor Strength
+
+* Community Density
+
+Buttons:
+
+* Start
+
+* Pause
+
+* Reset
+
+Now users can run experiments.
+
+## Day 7 — Local AI Analyst
+
+This is where AI enters.
+
+Use Ollama locally.
+
+Install:
+
+Bash
+
+```
+ollama pull llama3.2:3b
+```
+
+Instead of calling an API.
+
+Feed it simulation results.
+
+Example input:
+
+JSON
+
+```
+{
+ "trust":0.4,
+ "spread":72,
+ "rounds":18
+}
+```
+
+It generates:
+
+> "Lower trust caused the rumor to cross bridge communities rapidly."
+
+No internet needed.
+
+![Power meets intelligence in these AI laptops made for creators and professionals | Mint](https://images.openai.com/static-rsc-4/r5Lfw8S5JzbfljmHcV6NIK9-_C0NFpJT486zb1SsGSCHpq_t88SnZEc7lJH1YpHs0jHXBHplTxk2mR3wFDAEUXq4pDFILB7aS3LiyYue12sQ1jRdd0EPw-o9E6A7Q5K1SRcO4E6-bBLQLTo5XXmJ-JWkZtX76xKQz4LxK04WqUU?purpose=inline)
+
+## Day 8 — Research Mode
+
+Ship one flagship experiment.
+
+### Trust vs Misinformation
+
+Run three scenarios.
+
+|
+Trust
+
+|
+
+Result
+
+|
+| --- | --- |
+|
+
+20%
+
+|
+
+Chaos
+
+|
+|
+
+50%
+
+|
+
+Mixed
+
+|
+|
+
+80%
+
+|
+
+Quick recovery
+
+|
+
+Generate comparison graphs.
+
+## Day 9 — Polish
+
+* Smooth animations.
+
+* Tooltips.
+
+* Sound effects (optional).
+
+* Export results.
+
+* Dark futuristic UI.
+
+![Glass Morphism Dashboard - Payhip](https://images.openai.com/static-rsc-4/2kV3eXR-aE0f0ow5Mznmmy3HeuqCpSfUeA2BfJCVqrFhFWVe9PVjrwi2kmv_UF2DANBo-BZqo1kx3jQdABt8QBfboqT6mfiOAwCMUqKDBQv73qxInb7aXkdDvJcap6gpOa2d2aw3QY1EM35RpVGd6klhrlzDdCuLzNC0bY5xF4w?purpose=inline)
+
+![SaaS Analytics Dashboard, Dark Glassmorphism UI by DesignShare on Dribbble](https://images.openai.com/static-rsc-4/3CP_dVigZCvSeOW9hhsmR-JXlkiJebLGbC41ETIEC6qMg9sd1IoW9XHzRRmyd4HwGk3iarw2_nfiOAvvKlUTFDjD1mkqAK0Rvwyw8sJ9I1GVW5P_G6EzkRD5hak3v6ZPwCybIQBPIQh1NUwS18WozDiKIl1_Ww-0G6H47VbZCT8?purpose=inline)
+
+![Free Web App Templates | Komposo](https://images.openai.com/static-rsc-4/HuoKfFRMVZ-FKUwljwbzSrQMhjekc3Az-cM47PrUqi8v-yQmgcSzN1ujGj4sfmwibyMWQsB3wJ0JaorDIvGKXhUBVbeHd1dMirLR8JMcvzoC4M8Wpy6BePSLJFRFXDPWG3LQy0ZpbnXLlGAOv5deyCZEOIs8K8-u7tCQ4zFcY24?purpose=inline)
+
+5
+
+## Day 10 — Launch
+
+* GitHub README.
+
+* Demo GIF.
+
+* Screenshots.
+
+* Architecture diagram.
+
+* Future roadmap.
+
+# Folder Structure
+
+```
+social-gravity/
+│
+├── app/
+│   ├── dashboard/
+│   ├── simulation/
+│   ├── components/
+│   ├── graphs/
+│   └── experiments/
+│
+├── simulation/
+│   ├── agents.py
+│   ├── society.py
+│   ├── rumor.py
+│   └── psychology.py
+│
+├── ai/
+│   ├── local_llm.py
+│   └── prompts.py
+│
+├── assets/
+├── docs/
+└── README.md
+```
+
+# Local AI Only
+
+Instead of expensive APIs.
+
+|
+Task
+
+|
+
+Local Model
+
+|
+| --- | --- |
+|
+
+Report writing
+
+|
+
+Llama 3.2 (Ollama)
+
+|
+|
+
+Emotion analysis
+
+|
+
+RoBERTa-GoEmotions
+
+|
+|
+
+Optional embeddings
+
+|
+
+BGE-small
+
+|
+
+Everything is free.
+
+# MVP Features Only
+
+* 1000 virtual people
+
+* Real psychology rules
+
+* Live network visualization
+
+* Rumor simulation
+
+* Trust slider
+
+* Local AI-generated insights
+
+* Export experiment results
+
+# Features Deferred (v2)
+
+These stay on the roadmap.
+
+* Graph Neural Networks
+
+* Reinforcement Learning
+
+* Neo4j
+
+* Distributed simulations
+
+* Real-world datasets
+
+* Multi-agent LLM societies
+
+# The killer demo
+
+Open the app.
+
+Population: 1000
+
+Move Trust from 20% to 80%.
+
+Click Run.
+
+The network lights up.
+
+The rumor dies much faster.
+
+Ollama writes:
+
+> "Increasing trust reduced cross-community rumor spread by creating stronger local verification clusters."
+
+That single interaction explains the entire project in under 30 seconds and feels like a polished research prototype rather than an unfinished AI experiment.

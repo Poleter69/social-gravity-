@@ -1,0 +1,105 @@
+If you're aiming for a Palantir/CMU/MIT-level project, I'd structure the roadmap like this. Each step is a major milestone, not a tiny task.
+
+# Social Gravity Roadmap (10 Steps)
+
+|
+Step
+
+|
+
+Milestone
+
+|
+| --- | --- |
+|
+
+1
+
+|
+
+Living Graph Foundation — Dynamic nodes, edge decay, event engine, replay system.
+
+|
+|
+
+2
+
+|
+
+Universal Dataset Engine — Reverse-engineer all Facebook (`.edges`, `.circles`, `.feat`, etc.) files and build a unified importer.
+
+|
+|
+
+3
+
+|
+
+Graph Intelligence — Community detection (Louvain/Leiden), bridge nodes, centrality, modularity reports.
+
+|
+|
+
+4
+
+|
+
+Temporal Replay — Reconstruct communication over time with a timeline and snapshots.
+
+|
+|
+
+5
+
+|
+
+Trust Evolution Engine — Trust increases, decays, and changes through interactions.
+
+|
+|
+
+6
+
+|
+
+Emotional Contagion — Model fear, anger, trust, curiosity, and hope spreading through the network.
+
+|
+|
+
+7
+
+|
+
+Cascade Forecasting — Predict which communities will be affected next and estimate spread probability.
+
+|
+|
+
+8
+
+|
+
+Intervention Optimizer — Compute the minimum-cost actions (which nodes to contact, which bridges to strengthen).
+
+|
+|
+
+9
+
+|
+
+AI Research Analyst — Local LLM generates evidence-backed reports explaining findings and recommendations.
+
+|
+|
+
+10
+
+|
+
+Decision Intelligence Command Center — A Palantir-style interface combining live graph, forecasts, counterfactuals, and intervention planning.
+
+|
+
+This progression builds from infrastructure → intelligence → prediction → decision-making, so every later feature sits on a solid foundation instead of becoming a rewrite.
