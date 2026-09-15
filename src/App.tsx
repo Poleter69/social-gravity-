@@ -355,6 +355,7 @@ export const App: React.FC = () => {
               <span>Bridge Ratio: <strong className="text-amber-400">{(v2LoadedData.v2Metrics.bridgeRatio * 100).toFixed(1)}%</strong></span>
               <span>Clustering: <strong className="text-rose-400">{v2LoadedData.v2Metrics.globalClusteringCoefficient.toFixed(3)}</strong></span>
               <span>Density: <strong className="text-slate-200">{(v2LoadedData.v2Metrics.density * 100).toFixed(2)}%</strong></span>
+              <span>Resilience: <strong className="text-emerald-400">{(v2LoadedData.society.agents.reduce((acc, a) => acc + (a.psychology?.resilience ?? 0.5), 0) / (v2LoadedData.society.agents.length || 1) * 100).toFixed(0)}%</strong></span>
               <span>Avg Degree: <strong className="text-slate-200">{v2LoadedData.v2Metrics.averageDegree.toFixed(1)}</strong></span>
               <span>Records: <strong className="text-emerald-400">{v2LoadedData.validationReport.validRecordsCount}</strong></span>
             </div>
