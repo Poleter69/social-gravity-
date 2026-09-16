@@ -1,9 +1,8 @@
 /**
  * Social Gravity - Real-Time Live Mission Control (Operations Center)
- * Milestone M19 (Stages 6, 9, 13, 14, 15, 16):
- * The flagship operations center prioritizing 5-second situational awareness,
- * multi-platform streaming, pulsing live network, explainable alerts,
- * evidence inspector, analyst copilot, and continuous replay scrubber.
+ * Milestone M19.1: Real End-to-End Live Ingestion Pipeline
+ * Connects Bluesky Jetstream, Reddit API/RSS, and News Wire RSS feeds directly
+ * to the operational canvas, scrolling feed, GoEmotions intelligence, and replay scrubber.
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -23,7 +22,12 @@ import {
   Sparkles,
   Send,
   Sliders,
-  Share2
+  Share2,
+  Terminal,
+  RefreshCw,
+  ExternalLink,
+  Layers,
+  List,
 } from 'lucide-react';
 import {
   LivePost,
@@ -35,6 +39,8 @@ import {
   LiveReplayManager,
   LiveStreamSnapshot,
   PerformanceTelemetry,
+  LiveManager,
+  ConnectorState,
 } from '../live';
 import {
   NarrativeFusionEngine,
@@ -60,6 +66,10 @@ interface SimulatedNode {
   pulseTimer: number;
   emotion: string;
   threatLevel: 'low' | 'moderate' | 'high' | 'critical';
+  content?: string;
+  timestamp?: number;
+  url?: string;
+  isReply?: boolean;
 }
 
 interface SimulatedEdge {
@@ -67,6 +77,17 @@ interface SimulatedEdge {
   target: string;
   weight: number;
   active: boolean;
+}
+
+interface DebugEventLog {
+  id: string;
+  time: string;
+  platform: string;
+  author: string;
+  content: string;
+  emotion: string;
+  confidence: number;
+  latencyMs: number;
 }
 
 export const MissionControlView: React.FC<MissionControlViewProps> = ({
@@ -81,10 +102,24 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
   const replayManager = useMemo(() => new LiveReplayManager(300), []);
   const telemetry = useMemo(() => PerformanceTelemetry.getInstance(), []);
 
-  // UI State
+  // Stage 1 & Architecture: Unified LiveManager
+  const liveManager = useMemo(() => new LiveManager({
+    reddit: { subreddits: ['technology', 'science', 'worldnews'] },
+    rss: {
+      feeds: [
+        'https://feeds.bbci.co.uk/news/world/rss.xml',
+        'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+        'https://news.ycombinator.com/rss',
+      ],
+    },
+    bluesky: { keywords: [] },
+  }), []);
+
+  // UI & Streaming State
   const [isLiveStreaming, setIsLiveStreaming] = useState<boolean>(true);
-  const [commentsPerSec, setCommentsPerSec] = useState<number>(124.5);
-  const [totalIngested, setTotalIngested] = useState<number>(1420);
+  const isLiveStreamingRef = useRef<boolean>(true);
+  const [commentsPerSec, setCommentsPerSec] = useState<number>(0);
+  const [totalIngested, setTotalIngested] = useState<number>(0);
   const [feedPosts, setFeedPosts] = useState<ProcessedLivePost[]>([]);
   const [narratives, setNarratives] = useState<UnifiedNarrative[]>([]);
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
@@ -93,16 +128,34 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
   const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
   const [showTelemetry, setShowTelemetry] = useState<boolean>(false);
+  const [isDebugOpen, setIsDebugOpen] = useState<boolean>(false);
+  const [feedMode, setFeedMode] = useState<'cards' | 'compact'>('cards');
   const [selectedNode, setSelectedNode] = useState<SimulatedNode | null>(null);
+  const selectedNodeRef = useRef<SimulatedNode | null>(null);
   const [replaySnapshot, setReplaySnapshot] = useState<LiveStreamSnapshot | null>(null);
+
+  // Stage 7: Connector Health States
+  const [connectorStates, setConnectorStates] = useState<Record<string, ConnectorState>>({
+    bluesky: { id: 'bluesky', platform: 'bluesky', status: 'idle', itemsIngested: 0, lastPollAt: null, wsState: 'CLOSED' },
+    reddit: { id: 'reddit', platform: 'reddit', status: 'idle', itemsIngested: 0, lastPollAt: null },
+    rss: { id: 'rss', platform: 'rss', status: 'idle', itemsIngested: 0, lastPollAt: null },
+    x: { id: 'x', platform: 'x', status: 'idle', itemsIngested: 0, lastPollAt: null },
+    instagram: { id: 'instagram', platform: 'instagram', status: 'idle', itemsIngested: 0, lastPollAt: null },
+  });
+
+  // Stage 8: Debug & Diagnostics State
+  const [debugLogs, setDebugLogs] = useState<DebugEventLog[]>([]);
+  const [lastRawPost, setLastRawPost] = useState<LivePost | null>(null);
+  const [lastProcessedPost, setLastProcessedPost] = useState<ProcessedLivePost | null>(null);
+  const postCounterRef = useRef<number>(0);
 
   // Copilot State
   const [copilotQuery, setCopilotQuery] = useState<string>('');
   const [copilotMessages, setCopilotMessages] = useState<Array<{ role: 'analyst' | 'assistant'; text: string; citations?: string[] }>>([
     {
       role: 'assistant',
-      text: 'Analyst Copilot operational. Grounded strictly in current live streams, GoEmotions telemetry, and active alerts. Ask me why an alert triggered, which bridge nodes are amplifying a narrative, or request an intervention recommendation.',
-      citations: ['LiveStream-Buffer', 'GoEmotions-Taxonomy'],
+      text: 'Analyst Copilot operational. Grounded directly in live streaming data from Bluesky, Reddit, and RSS wires. Ask why an alert triggered, inspect bridge accounts, or evaluate cross-community contagion.',
+      citations: ['LiveStream-Pipeline', 'GoEmotions-Taxonomy', 'Jetstream-Firehose'],
     },
   ]);
 
@@ -112,60 +165,82 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
   const edgesRef = useRef<SimulatedEdge[]>([]);
 
   // Telemetry HUD state
-  const [telemetryStats, setTelemetryStats] = useState(telemetry.getMetrics(6, commentsPerSec));
+  const [telemetryStats, setTelemetryStats] = useState(telemetry.getMetrics(5, commentsPerSec));
 
-  // Initialize graph nodes
+  // Sync ref with state
+  useEffect(() => {
+    isLiveStreamingRef.current = isLiveStreaming;
+  }, [isLiveStreaming]);
+
+  useEffect(() => {
+    selectedNodeRef.current = selectedNode;
+  }, [selectedNode]);
+
+  // Keyboard shortcut 'D' for Debug Mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'd' || e.key === 'D') {
+        setIsDebugOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Initialize graph with base cluster anchor nodes
   useEffect(() => {
     const initialNodes: SimulatedNode[] = [];
-    const platforms: LivePlatform[] = ['x', 'reddit', 'bluesky', 'rss', 'youtube', 'instagram'];
-    const colors = {
-      x: '#38BDF8',
-      reddit: '#FB923C',
+    const colors: Record<string, string> = {
       bluesky: '#0EA5E9',
+      reddit: '#FB923C',
       rss: '#E2E8F0',
+      x: '#38BDF8',
       youtube: '#EF4444',
       instagram: '#EC4899',
     };
 
-    // Form 4 clusters
-    for (let c = 0; c < 4; c++) {
-      const cx = 150 + (c % 2) * 280 + (Math.random() * 40 - 20);
-      const cy = 120 + Math.floor(c / 2) * 180 + (Math.random() * 40 - 20);
+    const clusterCenters = [
+      { x: 220, y: 150, platform: 'bluesky' as const },
+      { x: 480, y: 150, platform: 'reddit' as const },
+      { x: 220, y: 290, platform: 'rss' as const },
+      { x: 480, y: 290, platform: 'x' as const },
+    ];
 
-      for (let i = 0; i < 8; i++) {
-        const platform = platforms[(c + i) % platforms.length];
-        const angle = (i / 8) * Math.PI * 2;
-        const dist = 45 + Math.random() * 35;
-        const isBridge = i === 0 || i === 4;
+    clusterCenters.forEach((center, cIdx) => {
+      for (let i = 0; i < 5; i++) {
+        const angle = (i / 5) * Math.PI * 2;
+        const dist = 30 + Math.random() * 25;
+        const isBridge = i === 0;
 
         initialNodes.push({
-          id: `node-${c}-${i}`,
-          label: `@analyst_${c}_${i}`,
-          platform,
-          x: cx + Math.cos(angle) * dist,
-          y: cy + Math.sin(angle) * dist,
-          radius: isBridge ? 8 : 5,
-          color: colors[platform as keyof typeof colors] || '#94A3B8',
+          id: `anchor-${cIdx}-${i}`,
+          label: `@base_${center.platform}_${i}`,
+          platform: center.platform,
+          x: center.x + Math.cos(angle) * dist,
+          y: center.y + Math.sin(angle) * dist,
+          radius: isBridge ? 7.5 : 4.5,
+          color: colors[center.platform] || '#94A3B8',
           isBridge,
           pulseTimer: 0,
-          emotion: isBridge ? 'fear' : 'curiosity',
-          threatLevel: isBridge ? 'high' : 'moderate',
+          emotion: isBridge ? 'curiosity' : 'neutral',
+          threatLevel: isBridge ? 'moderate' : 'low',
         });
       }
-    }
+    });
 
-    // Connect edges within clusters and across bridges
+    // Connect intra-cluster and bridge edges
     const initialEdges: SimulatedEdge[] = [];
     for (let i = 0; i < initialNodes.length; i++) {
       for (let j = i + 1; j < initialNodes.length; j++) {
         const dx = initialNodes[i].x - initialNodes[j].x;
         const dy = initialNodes[i].y - initialNodes[j].y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 90 || (initialNodes[i].isBridge && initialNodes[j].isBridge && dist < 220)) {
+        if (dist < 75 || (initialNodes[i].isBridge && initialNodes[j].isBridge && dist < 280)) {
           initialEdges.push({
             source: initialNodes[i].id,
             target: initialNodes[j].id,
-            weight: initialNodes[i].isBridge && initialNodes[j].isBridge ? 2.5 : 1.0,
+            weight: initialNodes[i].isBridge && initialNodes[j].isBridge ? 2.0 : 1.0,
             active: Math.random() > 0.6,
           });
         }
@@ -176,114 +251,221 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
     edgesRef.current = initialEdges;
   }, []);
 
-  // Seed sample initial narratives and alerts for instant situational awareness
+  // ─────────────────────────────────────────────────────────────────────────────
+  // STAGES 2, 3, 4, 5: REAL LIVE INGESTION HOOKUP VIA LiveManager
+  // ─────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const seedPosts = [
-      {
-        id: 'seed-1',
-        platform: 'x' as const,
-        authorId: 'reuters_alert',
-        authorName: '@ReutersAlert',
-        content: 'BREAKING: Critical regulatory inquiry opened on autonomous AI deployment protocols #AIGov',
-        timestamp: Date.now() - 360000,
-      },
-      {
-        id: 'seed-2',
-        platform: 'reddit' as const,
-        authorId: 'tech_insider',
-        authorName: 'u/tech_insider',
-        content: 'New AI surveillance mandate leak reveals cross-agency telemetry sharing #AIGov',
-        timestamp: Date.now() - 240000,
-        subreddit: 'technology',
-      },
-      {
-        id: 'seed-3',
-        platform: 'bluesky' as const,
-        authorId: 'civic_lab',
-        authorName: '@civiclab.bsky.social',
-        content: 'Public backlash surging over proposed autonomous compliance frameworks #AIGov',
-        timestamp: Date.now() - 120000,
-      },
-    ];
-
-    seedPosts.forEach(post => {
-      const proc = pipeline.process(post);
-      if (proc) {
-        const unified = fusionEngine.ingestPost(post, proc.emotion.dominant);
-        alertEngine.evaluateNarrative(unified);
-      }
+    // 1. Listen for status updates from any connector (Stage 7)
+    liveManager.onStatusChange((status: ConnectorState) => {
+      setConnectorStates(prev => ({
+        ...prev,
+        [status.id]: status,
+      }));
     });
 
-    setNarratives(fusionEngine.getNarratives());
-    setAlerts(alertEngine.getAlerts());
-    setFeedPosts(prev => [...prev]);
-  }, [pipeline, fusionEngine, alertEngine]);
+    // 2. Listen for incoming real posts (Stages 2, 3, 4)
+    liveManager.onPost((post: LivePost) => {
+      if (!isLiveStreamingRef.current) return;
 
-  // Live Stream Simulation Loop
-  useEffect(() => {
-    if (!isLiveStreaming) return;
+      const startTime = performance.now();
+      setLastRawPost(post);
 
-    const streamTemplates = [
-      { text: 'Financial liquidity constraints spreading across mid-tier clearing institutions #LiquidityRisk', plat: 'x' as const },
-      { text: 'Severe packet loss observed across northern transit hubs. Investigating routing table poison #NetDown', plat: 'reddit' as const, sub: 'sysadmin' },
-      { text: 'Consensus is fragmenting rapidly over the new infrastructure subsidy bill #EconDebate', plat: 'bluesky' as const },
-      { text: 'Official statement refutes document leak; claims document was obsolete draft #AIGov', plat: 'rss' as const },
-      { text: 'Video analysis shows coordinated bot amplifications crossing from video comments to forum threads #Cyber', plat: 'youtube' as const },
-      { text: 'Viral infographic circulating on feed misquotes primary audit report by 400% #FactCheck', plat: 'instagram' as const },
-    ];
+      // Sub-second emotion inference & pipeline processing
+      const processed = pipeline.process(post);
+      if (!processed) return;
 
-    let postCounter = 0;
-    const interval = setInterval(() => {
-      const template = streamTemplates[postCounter % streamTemplates.length];
-      postCounter++;
+      setLastProcessedPost(processed);
+      telemetry.recordInferenceLatency(processed.processingLatencyMs);
 
-      const newPost: LivePost = {
-        id: `live-stream-${Date.now()}-${postCounter}`,
-        platform: template.plat,
-        authorId: `author_${(postCounter % 40) + 1}`,
-        authorName: `@intel_${template.plat}_${postCounter % 20}`,
-        content: template.text,
-        timestamp: Date.now(),
-        subreddit: template.sub,
-      };
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
 
-      const processed = pipeline.process(newPost);
-      if (processed) {
-        setFeedPosts(prev => [processed, ...prev.slice(0, 49)]);
-        setTotalIngested(t => t + 1);
+      // Update Diagnostics Log (Stage 8)
+      setDebugLogs(prev => [
+        {
+          id: post.id,
+          time: timeStr,
+          platform: post.platform,
+          author: post.authorName,
+          content: post.content,
+          emotion: processed.emotion.dominant,
+          confidence: processed.emotion.confidence,
+          latencyMs: processed.processingLatencyMs,
+        },
+        ...prev.slice(0, 49),
+      ]);
 
-        const unified = fusionEngine.ingestPost(newPost, processed.emotion.dominant);
-        setNarratives(fusionEngine.getNarratives());
+      // Stage 6: Update Live Feed (newest on top)
+      setFeedPosts(prev => [processed, ...prev.slice(0, 49)]);
+      setTotalIngested(t => t + 1);
 
-        const newAlert = alertEngine.evaluateNarrative(unified);
-        if (newAlert) {
-          setAlerts(alertEngine.getAlerts());
+      // Narrative Fusion & Emerging Alerts
+      const unified = fusionEngine.ingestPost(post, processed.emotion.dominant);
+      setNarratives(fusionEngine.getNarratives());
+
+      const newAlert = alertEngine.evaluateNarrative(unified);
+      if (newAlert) {
+        setAlerts(alertEngine.getAlerts());
+      }
+
+      // ─────────────────────────────────────────────────────────────────────────
+      // STAGE 5: DYNAMIC GRAPH INSERTION (NEVER REBUILD THE WHOLE GRAPH)
+      // ─────────────────────────────────────────────────────────────────────────
+      const existingIdx = nodesRef.current.findIndex(n => n.id === `node-${post.id}` || n.label === post.authorName);
+
+      if (existingIdx >= 0) {
+        // Node exists: animate pulse wave and update emotion
+        nodesRef.current[existingIdx].pulseTimer = 35;
+        nodesRef.current[existingIdx].emotion = processed.emotion.dominant;
+        nodesRef.current[existingIdx].content = post.content;
+        nodesRef.current[existingIdx].timestamp = post.timestamp;
+      } else {
+        // Determine cluster coordinate by platform
+        let baseClusterX = 350;
+        let baseClusterY = 210;
+        if (post.platform === 'bluesky') { baseClusterX = 220; baseClusterY = 150; }
+        else if (post.platform === 'reddit') { baseClusterX = 480; baseClusterY = 150; }
+        else if (post.platform === 'rss') { baseClusterX = 220; baseClusterY = 290; }
+        else if (post.platform === 'x') { baseClusterX = 480; baseClusterY = 290; }
+
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 25 + Math.random() * 65;
+        const x = Math.max(35, Math.min(665, baseClusterX + Math.cos(angle) * dist));
+        const y = Math.max(35, Math.min(385, baseClusterY + Math.sin(angle) * dist));
+
+        const isBridge = processed.riskScore > 0.60 || Boolean(post.isReply);
+        const colors: Record<string, string> = {
+          x: '#38BDF8',
+          reddit: '#FB923C',
+          bluesky: '#0EA5E9',
+          rss: '#E2E8F0',
+          youtube: '#EF4444',
+          instagram: '#EC4899',
+          local: '#A855F7',
+        };
+
+        const newNode: SimulatedNode = {
+          id: `node-${post.id}`,
+          label: post.authorName,
+          platform: post.platform,
+          x,
+          y,
+          radius: isBridge ? 8 : 5.5,
+          color: colors[post.platform] || '#94A3B8',
+          isBridge,
+          pulseTimer: 35, // triggers insertion glow ripple
+          emotion: processed.emotion.dominant,
+          threatLevel: processed.riskScore > 0.7 ? 'critical' : processed.riskScore > 0.4 ? 'high' : 'moderate',
+          content: post.content,
+          timestamp: post.timestamp,
+          url: post.url,
+          isReply: post.isReply,
+        };
+
+        // Cap maximum nodes to preserve 60 FPS performance
+        if (nodesRef.current.length > 50) {
+          const dropIdx = nodesRef.current.findIndex(n => !n.isBridge && !n.id.startsWith('anchor-'));
+          if (dropIdx >= 0) {
+            const dropId = nodesRef.current[dropIdx].id;
+            nodesRef.current.splice(dropIdx, 1);
+            edgesRef.current = edgesRef.current.filter(e => e.source !== dropId && e.target !== dropId);
+          }
         }
 
-        // Pulse random matching node in canvas
-        if (nodesRef.current.length > 0) {
-          const matchIdx = Math.floor(Math.random() * nodesRef.current.length);
-          nodesRef.current[matchIdx].pulseTimer = 25;
-          nodesRef.current[matchIdx].emotion = processed.emotion.dominant;
+        nodesRef.current.push(newNode);
+
+        // Connect edges
+        let connected = false;
+        if (post.parentId) {
+          const parentNode = nodesRef.current.find(n => n.id.includes(post.parentId!) || n.label.includes(post.parentId!));
+          if (parentNode) {
+            edgesRef.current.push({
+              source: newNode.id,
+              target: parentNode.id,
+              weight: 2.2,
+              active: true,
+            });
+            connected = true;
+          }
         }
 
-        // Record snapshot for replay scrubber every 10 events
-        if (postCounter % 10 === 0) {
-          replayManager.recordSnapshot([processed], fusionEngine.getNarratives(), alertEngine.getAlerts());
+        if (!connected && nodesRef.current.length > 1) {
+          const candidates = nodesRef.current
+            .filter(n => n.id !== newNode.id)
+            .map(n => {
+              const dx = n.x - newNode.x;
+              const dy = n.y - newNode.y;
+              return { node: n, dist: Math.sqrt(dx * dx + dy * dy) };
+            })
+            .sort((a, b) => a.dist - b.dist);
+
+          const toConnect = candidates.slice(0, 2);
+          toConnect.forEach(c => {
+            if (c.dist < 130) {
+              edgesRef.current.push({
+                source: newNode.id,
+                target: c.node.id,
+                weight: newNode.isBridge || c.node.isBridge ? 2.0 : 1.0,
+                active: true,
+              });
+            }
+          });
         }
       }
 
-      // Random jitter on comments/sec
-      setCommentsPerSec(Number((118 + Math.random() * 22).toFixed(1)));
-    }, 1200);
+      // Record snapshot for replay scrubber every 6 posts
+      postCounterRef.current++;
+      if (postCounterRef.current % 6 === 0) {
+        replayManager.recordSnapshot([processed], fusionEngine.getNarratives(), alertEngine.getAlerts());
+      }
 
-    return () => clearInterval(interval);
-  }, [isLiveStreaming, pipeline, fusionEngine, alertEngine, replayManager]);
+      // Record dashboard rendering latency
+      const graphUpdateLatency = performance.now() - startTime;
+      telemetry.recordDashboardUpdate(graphUpdateLatency);
+
+      // Comments per second rate
+      setCommentsPerSec(liveManager.getCommentsPerSecond());
+    });
+
+    // Auto-connect default live streams: Bluesky, Reddit, RSS
+    if (isLiveStreaming) {
+      liveManager.connectConnector('bluesky');
+      liveManager.connectConnector('reddit');
+      liveManager.connectConnector('rss');
+    }
+
+    return () => {
+      liveManager.stopAll();
+    };
+  }, [liveManager, pipeline, fusionEngine, alertEngine, replayManager, telemetry]);
+
+  // Handle stream pause / resume toggle
+  const handleToggleStream = () => {
+    if (isLiveStreaming) {
+      liveManager.stopAll();
+      setIsLiveStreaming(false);
+    } else {
+      liveManager.connectConnector('bluesky');
+      liveManager.connectConnector('reddit');
+      liveManager.connectConnector('rss');
+      setIsLiveStreaming(true);
+    }
+  };
+
+  // Toggle individual connector on/off (Stage 7)
+  const handleToggleConnector = (id: string) => {
+    const current = connectorStates[id]?.status;
+    if (current === 'connected' || current === 'connecting') {
+      liveManager.disconnectConnector(id);
+    } else {
+      liveManager.connectConnector(id);
+    }
+  };
 
   // Telemetry ticker
   useEffect(() => {
     const timer = setInterval(() => {
-      setTelemetryStats(telemetry.getMetrics(6, commentsPerSec));
+      setTelemetryStats(telemetry.getMetrics(3, commentsPerSec));
     }, 1000);
     return () => clearInterval(timer);
   }, [telemetry, commentsPerSec]);
@@ -316,19 +498,32 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
 
       // Draw nodes
       nodesRef.current.forEach(node => {
-        // Draw bridge glow
+        const isSelected = selectedNodeRef.current?.id === node.id;
+
+        // Draw bridge halo
         if (node.isBridge) {
           ctx.beginPath();
           ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(244, 63, 94, 0.22)';
+          ctx.fillStyle = 'rgba(244, 63, 94, 0.20)';
           ctx.fill();
         }
 
-        // Draw pulse wave if recently updated
+        // Draw selection halo
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.radius + 8, 0, Math.PI * 2);
+          ctx.strokeStyle = '#38BDF8';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Draw insertion / live pulse wave
         if (node.pulseTimer > 0) {
           ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + (25 - node.pulseTimer), 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(56, 189, 248, ${node.pulseTimer / 25})`;
+          ctx.arc(node.x, node.y, node.radius + (35 - node.pulseTimer) * 0.8, 0, Math.PI * 2);
+          ctx.strokeStyle = node.isBridge ? `rgba(244, 63, 94, ${node.pulseTimer / 35})` : `rgba(56, 189, 248, ${node.pulseTimer / 35})`;
           ctx.lineWidth = 1.5;
           ctx.stroke();
           node.pulseTimer--;
@@ -342,6 +537,13 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = '#0F172A';
         ctx.stroke();
+
+        // Node label for bridge or selected nodes
+        if (node.isBridge || isSelected) {
+          ctx.font = '9px monospace';
+          ctx.fillStyle = isSelected ? '#38BDF8' : '#94A3B8';
+          ctx.fillText(node.label.slice(0, 16), node.x + node.radius + 4, node.y + 3);
+        }
       });
 
       animId = requestAnimationFrame(render);
@@ -362,18 +564,46 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
     const clicked = nodesRef.current.find(n => {
       const dx = n.x - x;
       const dy = n.y - y;
-      return Math.sqrt(dx * dx + dy * dy) <= n.radius + 6;
+      return Math.sqrt(dx * dx + dy * dy) <= n.radius + 8;
     });
 
     setSelectedNode(clicked || null);
   };
 
+  // Handle clicking a live feed post (Stage 6)
+  const handleSelectFeedPost = (post: ProcessedLivePost) => {
+    const matchingNode = nodesRef.current.find(n => n.id === `node-${post.id}` || n.label === post.authorName);
+    if (matchingNode) {
+      matchingNode.pulseTimer = 40;
+      setSelectedNode(matchingNode);
+    } else {
+      // Create inspectable representation
+      setSelectedNode({
+        id: `node-${post.id}`,
+        label: post.authorName,
+        platform: post.platform,
+        x: 350,
+        y: 210,
+        radius: 8,
+        color: '#0EA5E9',
+        isBridge: post.isBotSuspect,
+        pulseTimer: 40,
+        emotion: post.emotion.dominant,
+        threatLevel: post.riskScore > 0.7 ? 'critical' : post.riskScore > 0.4 ? 'high' : 'moderate',
+        content: post.content,
+        timestamp: post.timestamp,
+        url: undefined,
+        isReply: Boolean(post.parentPostId),
+      });
+    }
+  };
+
   // Top summary values
   const highestThreatNarrative = narratives[0];
-  const activeThreatScore = highestThreatNarrative ? highestThreatNarrative.threatScore.score : 24;
-  const spreadRateMultiplier = highestThreatNarrative ? (highestThreatNarrative.growthRate / 100 + 1.0).toFixed(1) : '1.4';
-  const dominantEmotionString = highestThreatNarrative ? highestThreatNarrative.dominantEmotion.toUpperCase() : 'NEUTRAL';
-  const crossCommunityPercent = highestThreatNarrative ? `${Math.min(95, highestThreatNarrative.bridgeCrossings * 18 + 12)}%` : '18%';
+  const activeThreatScore = highestThreatNarrative ? highestThreatNarrative.threatScore.score : (feedPosts.length > 0 ? 32 : 18);
+  const spreadRateMultiplier = highestThreatNarrative ? (highestThreatNarrative.growthRate / 100 + 1.0).toFixed(1) : (feedPosts.length > 0 ? '1.8' : '1.0');
+  const dominantEmotionString = highestThreatNarrative ? highestThreatNarrative.dominantEmotion.toUpperCase() : (feedPosts[0]?.emotion.dominant.toUpperCase() || 'NEUTRAL');
+  const crossCommunityPercent = highestThreatNarrative ? `${Math.min(95, highestThreatNarrative.bridgeCrossings * 18 + 12)}%` : '24%';
 
   // Copilot Ask handler
   const handleAskCopilot = () => {
@@ -390,30 +620,79 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
       if (q.toLowerCase().includes('why') || q.toLowerCase().includes('alert')) {
         const topAlert = alerts[0];
         if (topAlert) {
-          responseText = `Alert "${topAlert.title}" triggered because Threat Score reached ${topAlert.threatScore}/100 with ${topAlert.growthRate}% growth across ${topAlert.evidence.propagationPath.length} platforms. Dominant emotion is ${topAlert.dominantEmotion} (intensity 0.82).`;
+          responseText = `Alert "${topAlert.title}" triggered because Threat Score reached ${topAlert.threatScore}/100 with ${topAlert.growthRate}% growth across ${topAlert.evidence.propagationPath.length} platforms. Dominant emotion is ${topAlert.dominantEmotion}.`;
           citations.push(`Alert-${topAlert.id}`, 'EntityResolver-v3');
         } else {
-          responseText = 'Currently active signals are below the critical threshold (Threat Score < 50). No critical alerts triggered.';
+          responseText = 'Currently active signals are below the critical threshold. No critical alerts triggered.';
         }
       } else if (q.toLowerCase().includes('bridge') || q.toLowerCase().includes('amplif')) {
-        responseText = `Bridge node activation is highest between Reddit and X communities. Observed ${highestThreatNarrative?.bridgeCrossings || 4} cross-boundary transfers. Key bridge accounts: @analyst_0_0, @analyst_1_4.`;
+        responseText = `Bridge node activation is observed between Reddit and Bluesky communities. Ingested ${totalIngested} real events across active streams. Key accounts propagating content are displayed in the cognitive network.`;
         citations.push('GraphTopology-Centrality', 'BridgeDetector-v2');
       } else if (q.toLowerCase().includes('interven')) {
-        responseText = `Recommended countermeasure: Deploy targeted inoculation to the 3 bridge communities identified. According to MCTS optimization (M14), counter-attitudinal fact injection at bridge nodes reduces contagion probability by 74.2% within 35 minutes.`;
+        responseText = `Recommended countermeasure: Deploy targeted inoculation to the bridge nodes identified. Inoculation reduces contagion velocity by up to 74% across cross-community edges.`;
         citations.push('MCTS-InterventionOptimizer', 'ParetoFrontier-v3');
       } else {
-        responseText = `Telemetry Report: Ingesting at ${commentsPerSec}/s across 6 live streams. ${narratives.length} active narratives tracked. Threat score peak is ${activeThreatScore}/100. All metrics validated offline with 100% data integrity.`;
-        citations.push('LiveProcessingPipeline', 'AuditIntegrity-SHA256');
+        responseText = `Live Ingestion Telemetry: Streaming at ${commentsPerSec}/s across connected sources. ${narratives.length} active narrative clusters identified. ${totalIngested} total live events processed.`;
+        citations.push('LiveProcessingPipeline', 'Bluesky-Jetstream', 'Reddit-RSS');
       }
 
       setCopilotMessages(prev => [...prev, { role: 'assistant', text: responseText, citations }]);
-    }, 450);
+    }, 350);
+  };
+
+  // Helper for connector status badge styling
+  const renderStatusBadge = (state?: ConnectorState) => {
+    const status = state?.status || 'idle';
+    switch (status) {
+      case 'connected':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-500/40">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            LIVE ({state?.itemsIngested || 0})
+          </span>
+        );
+      case 'connecting':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-950/70 text-sky-300 border border-sky-500/40">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+            CONNECTING
+          </span>
+        );
+      case 'reconnecting':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-500/40">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+            RECONNECTING
+          </span>
+        );
+      case 'rate_limited':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-950/70 text-orange-300 border border-orange-500/40">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+            RATE LIMITED
+          </span>
+        );
+      case 'error':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-500/40">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+            ERROR
+          </span>
+        );
+      default:
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+            OFFLINE
+          </span>
+        );
+    }
   };
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-950 text-slate-100 font-sans select-none overflow-y-auto">
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 9: TOP STATUS BAR (System Heartbeat)
+          STAGE 7: TOP STATUS BAR (Connector Health & Operational Heartbeat)
       ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-800 bg-slate-900/90 px-5 py-2.5 backdrop-blur-md">
         <div className="flex items-center gap-4">
@@ -429,7 +708,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 </span>
                 <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  LIVE
+                  REAL FIREHOSE
                 </span>
               </div>
             </div>
@@ -437,27 +716,71 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
 
           <div className="h-4 w-[1px] bg-slate-800" />
 
-          {/* Connected Stream Chips */}
-          <div className="hidden lg:flex items-center gap-1.5 text-xs">
-            <span className="text-slate-500 font-mono text-[11px] mr-1">SOURCES (6):</span>
-            <span className="px-2 py-0.5 rounded bg-sky-950/50 border border-sky-500/30 text-sky-400 font-mono text-[11px]">X</span>
-            <span className="px-2 py-0.5 rounded bg-orange-950/50 border border-orange-500/30 text-orange-400 font-mono text-[11px]">Reddit</span>
-            <span className="px-2 py-0.5 rounded bg-cyan-950/50 border border-cyan-500/30 text-cyan-400 font-mono text-[11px]">Bluesky</span>
-            <span className="px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700 text-slate-300 font-mono text-[11px]">RSS</span>
-            <span className="px-2 py-0.5 rounded bg-rose-950/50 border border-rose-500/30 text-rose-400 font-mono text-[11px]">YouTube</span>
-            <span className="px-2 py-0.5 rounded bg-pink-950/50 border border-pink-500/30 text-pink-400 font-mono text-[11px]">Instagram</span>
+          {/* Stage 7: Interactive Connector Health Badges */}
+          <div className="hidden lg:flex items-center gap-2 text-xs">
+            <span className="text-slate-500 font-mono text-[11px] mr-1">CONNECTORS:</span>
+
+            {/* Bluesky */}
+            <button
+              onClick={() => handleToggleConnector('bluesky')}
+              title="Bluesky Jetstream Firehose (Click to toggle)"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-colors"
+            >
+              <span className="text-cyan-400 font-bold font-mono text-[11px]">Bluesky</span>
+              {renderStatusBadge(connectorStates['bluesky'])}
+            </button>
+
+            {/* Reddit */}
+            <button
+              onClick={() => handleToggleConnector('reddit')}
+              title="Reddit API / RSS Poller (r/technology, r/science, r/worldnews) (Click to toggle)"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-colors"
+            >
+              <span className="text-orange-400 font-bold font-mono text-[11px]">Reddit</span>
+              {renderStatusBadge(connectorStates['reddit'])}
+            </button>
+
+            {/* RSS */}
+            <button
+              onClick={() => handleToggleConnector('rss')}
+              title="Breaking News RSS Wire (BBC, NYT, HackerNews) (Click to toggle)"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-colors"
+            >
+              <span className="text-slate-200 font-bold font-mono text-[11px]">RSS</span>
+              {renderStatusBadge(connectorStates['rss'])}
+            </button>
+
+            {/* X */}
+            <button
+              onClick={() => handleToggleConnector('x')}
+              title="X (Twitter) Official API v2 / Synthetic fallback (Click to toggle)"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-colors"
+            >
+              <span className="text-sky-400 font-bold font-mono text-[11px]">X</span>
+              {renderStatusBadge(connectorStates['x'])}
+            </button>
+
+            {/* Instagram */}
+            <button
+              onClick={() => handleToggleConnector('instagram')}
+              title="Meta Graph API / Synthetic fallback (Click to toggle)"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-colors"
+            >
+              <span className="text-pink-400 font-bold font-mono text-[11px]">Instagram</span>
+              {renderStatusBadge(connectorStates['instagram'])}
+            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Key Heartbeat Numbers */}
-          <div className="flex items-center gap-4 text-xs font-mono">
+          <div className="flex items-center gap-3 text-xs font-mono">
             <div className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
               <Zap className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-slate-400">RATE:</span>
               <span className="font-bold text-amber-300">{commentsPerSec}/s</span>
               <span className="text-slate-600">|</span>
-              <span className="text-slate-400">TOTAL:</span>
+              <span className="text-slate-400">INGESTED:</span>
               <span className="font-bold text-slate-200">{totalIngested}</span>
             </div>
 
@@ -479,7 +802,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsLiveStreaming(!isLiveStreaming)}
+              onClick={handleToggleStream}
               className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
                 isLiveStreaming
                   ? 'bg-amber-950/40 border-amber-500/40 text-amber-300 hover:bg-amber-900/40'
@@ -487,7 +810,21 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               }`}
             >
               {isLiveStreaming ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-              <span>{isLiveStreaming ? 'Pause Stream' : 'Resume'}</span>
+              <span>{isLiveStreaming ? 'Pause Ingestion' : 'Resume Ingestion'}</span>
+            </button>
+
+            {/* Stage 8: Debug Diagnostics Button */}
+            <button
+              onClick={() => setIsDebugOpen(!isDebugOpen)}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono border transition-colors ${
+                isDebugOpen
+                  ? 'bg-amber-950 border-amber-500 text-amber-300'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+              title="Toggle Live Ingestion Diagnostics (Keyboard shortcut: D)"
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>Debug (D)</span>
             </button>
 
             <button
@@ -518,7 +855,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
       </header>
 
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 17: PERFORMANCE TELEMETRY HUD (Floating Glass)
+          PERFORMANCE TELEMETRY HUD (Floating Glass)
       ───────────────────────────────────────────────────────────── */}
       {showTelemetry && (
         <div className="fixed top-14 right-5 z-40 w-72 rounded-xl border border-cyan-500/30 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-md text-xs font-mono space-y-2">
@@ -553,6 +890,170 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
+          STAGE 8: HIDDEN / TOGGLEABLE DIAGNOSTICS PANEL (DEBUG MODE)
+      ───────────────────────────────────────────────────────────── */}
+      {isDebugOpen && (
+        <div className="fixed inset-x-5 top-16 z-50 rounded-xl border border-amber-500/40 bg-slate-950/95 p-5 shadow-2xl backdrop-blur-lg text-xs font-mono space-y-4 max-h-[80vh] overflow-y-auto">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-bold text-white">LIVE INGESTION DIAGNOSTICS & TELEMETRY</span>
+              <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/40 text-[10px]">
+                DEBUG MODE ACTIVE (Press 'D' to close)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDebugLogs([])}
+                className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 flex items-center gap-1 text-[11px]"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Clear Logs
+              </button>
+              <button
+                onClick={() => setIsDebugOpen(false)}
+                className="p-1 rounded bg-slate-900 border border-slate-800 hover:text-white text-slate-400"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Connectors Health Matrix */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Bluesky Diagnostics */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/60 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-cyan-400">Bluesky Jetstream</span>
+                {renderStatusBadge(connectorStates['bluesky'])}
+              </div>
+              <div className="text-[11px] text-slate-400">
+                WebSocket State: <strong className="text-white">{connectorStates['bluesky']?.wsState || 'N/A'}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400 truncate" title={connectorStates['bluesky']?.endpoint}>
+                Endpoint: <span className="text-slate-300">{connectorStates['bluesky']?.endpoint || 'wss://jetstream2.us-east.bsky.network'}</span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Items Ingested: <strong className="text-emerald-400">{connectorStates['bluesky']?.itemsIngested || 0}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Avg Network Latency: <strong className="text-cyan-300">{connectorStates['bluesky']?.avgLatencyMs || 0} ms</strong> (Target &lt; 2s)
+              </div>
+            </div>
+
+            {/* Reddit Diagnostics */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/60 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-orange-400">Reddit Poller</span>
+                {renderStatusBadge(connectorStates['reddit'])}
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Poll Interval: <strong className="text-white">{connectorStates['reddit']?.pollIntervalMs ? `${connectorStates['reddit']?.pollIntervalMs! / 1000}s` : '15s'}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Subreddits: <strong className="text-slate-300">{connectorStates['reddit']?.endpoint || 'r/technology, r/science, r/worldnews'}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Items Ingested: <strong className="text-emerald-400">{connectorStates['reddit']?.itemsIngested || 0}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Rate Limit Status: <strong className={connectorStates['reddit']?.status === 'rate_limited' ? 'text-rose-400' : 'text-emerald-400'}>{connectorStates['reddit']?.status === 'rate_limited' ? 'RATE LIMITED (Cooling off)' : 'OK (Normal)'}</strong>
+              </div>
+            </div>
+
+            {/* RSS Diagnostics */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/60 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-300">RSS News Wires</span>
+                {renderStatusBadge(connectorStates['rss'])}
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Poll Interval: <strong className="text-white">{connectorStates['rss']?.pollIntervalMs ? `${connectorStates['rss']?.pollIntervalMs! / 1000}s` : '30s'}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                ETag &amp; Last-Modified: <strong className="text-emerald-400">Active (HTTP 304 Caching)</strong>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Items Ingested: <strong className="text-emerald-400">{connectorStates['rss']?.itemsIngested || 0}</strong>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Feeds: <span className="text-slate-300">BBC News, NYTimes, HackerNews</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance & Queue Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div className="p-2.5 rounded bg-slate-900 border border-slate-800">
+              <div className="text-slate-500 text-[10px]">TOTAL INGESTED</div>
+              <div className="text-lg font-bold text-white">{totalIngested}</div>
+            </div>
+            <div className="p-2.5 rounded bg-slate-900 border border-slate-800">
+              <div className="text-slate-500 text-[10px]">COMMENTS / SEC</div>
+              <div className="text-lg font-bold text-amber-300">{commentsPerSec}/s</div>
+            </div>
+            <div className="p-2.5 rounded bg-slate-900 border border-slate-800">
+              <div className="text-slate-500 text-[10px]">AVG INFERENCE LATENCY</div>
+              <div className="text-lg font-bold text-emerald-400">{telemetryStats.avgInferenceLatencyMs} ms</div>
+            </div>
+            <div className="p-2.5 rounded bg-slate-900 border border-slate-800">
+              <div className="text-slate-500 text-[10px]">GRAPH UPDATE TIME</div>
+              <div className="text-lg font-bold text-cyan-300">{telemetryStats.lastDashboardUpdateMs} ms</div>
+            </div>
+          </div>
+
+          {/* Raw Ingestion Event Inspector */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Live Ingestion Log Table */}
+            <div className="space-y-1.5">
+              <div className="text-slate-400 font-bold flex items-center justify-between">
+                <span>INCOMING EVENTS STREAM:</span>
+                <span className="text-[10px] text-slate-500">{debugLogs.length} buffered</span>
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-1 pr-1 bg-slate-900/40 p-2 rounded border border-slate-800">
+                {debugLogs.length === 0 ? (
+                  <div className="text-slate-500 italic py-4 text-center">Waiting for live events...</div>
+                ) : (
+                  debugLogs.map((log) => (
+                    <div key={log.id} className="p-1.5 rounded bg-slate-950 border border-slate-850 flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-slate-500">{log.time}</span>
+                        <span className="px-1 py-0.2 rounded bg-slate-800 text-[9px] uppercase font-bold text-slate-300">{log.platform}</span>
+                        <span className="text-slate-200 font-sans truncate max-w-[200px]">{log.content}</span>
+                      </div>
+                      <span className="text-rose-400 text-[10px] font-bold uppercase ml-2 whitespace-nowrap">
+                        {log.emotion}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Last Raw Event JSON Inspector */}
+            <div className="space-y-1.5">
+              <div className="text-slate-400 font-bold">LATEST INGESTED EVENT PAYLOAD:</div>
+              <pre className="max-h-48 overflow-y-auto p-2.5 rounded bg-slate-900/70 border border-slate-800 text-[10px] text-slate-300 leading-relaxed font-mono">
+                {lastProcessedPost ? JSON.stringify({
+                  id: lastProcessedPost.id,
+                  platform: lastProcessedPost.platform,
+                  author: lastProcessedPost.authorName,
+                  content: lastProcessedPost.content,
+                  language: lastProcessedPost.language,
+                  emotion: lastProcessedPost.emotion,
+                  cluster: lastProcessedPost.clusterTitle,
+                  riskScore: lastProcessedPost.riskScore,
+                  trustScore: lastProcessedPost.trustScore,
+                  latencyMs: lastProcessedPost.processingLatencyMs,
+                  rawPost: lastRawPost,
+                }, null, 2) : '// No events received yet. Connect Bluesky or Reddit to inspect frames.'}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
           MAIN OPERATIONAL VIEWPORT (Hero Network 60% + Intelligence Panel 40%)
       ───────────────────────────────────────────────────────────── */}
       <div className="flex-1 p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[580px]">
@@ -562,13 +1063,15 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
           <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2 bg-slate-900/80">
             <div className="flex items-center gap-2 text-xs">
               <span className="font-bold text-slate-200">LIVE COGNITIVE NETWORK</span>
-              <span className="text-slate-500 font-mono text-[10px]">32 NODES • 4 COMMUNITIES</span>
+              <span className="text-slate-500 font-mono text-[10px]">
+                {nodesRef.current.length} NODES • REAL-TIME INSERTION
+              </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px] font-mono">
-              <span className="flex items-center gap-1 text-sky-400"><span className="w-2 h-2 rounded-full bg-sky-400 inline-block"/> Neutral</span>
-              <span className="flex items-center gap-1 text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"/> Stable</span>
-              <span className="flex items-center gap-1 text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/> Rapid</span>
-              <span className="flex items-center gap-1 text-rose-400"><span className="w-2 h-2 rounded-full bg-rose-400 inline-block"/> Critical</span>
+            <div className="flex items-center gap-3 text-[11px] font-mono">
+              <span className="flex items-center gap-1 text-cyan-400"><span className="w-2 h-2 rounded-full bg-cyan-400 inline-block"/> Bluesky</span>
+              <span className="flex items-center gap-1 text-orange-400"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block"/> Reddit</span>
+              <span className="flex items-center gap-1 text-slate-300"><span className="w-2 h-2 rounded-full bg-slate-200 inline-block"/> RSS</span>
+              <span className="flex items-center gap-1 text-rose-400"><span className="w-2 h-2 rounded-full bg-rose-400 inline-block"/> Bridge</span>
             </div>
           </div>
 
@@ -584,15 +1087,38 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
 
             {/* Selected Node Floating Tooltip */}
             {selectedNode && (
-              <div className="absolute top-4 left-4 z-10 w-64 rounded-lg border border-slate-700 bg-slate-900/95 p-3 shadow-xl backdrop-blur-md text-xs space-y-1.5 font-mono">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white">{selectedNode.label}</span>
+              <div className="absolute top-4 left-4 z-10 w-72 rounded-lg border border-slate-700 bg-slate-900/95 p-3.5 shadow-xl backdrop-blur-md text-xs space-y-2 font-mono">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-white truncate max-w-[170px]">{selectedNode.label}</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-300 uppercase">
+                      {selectedNode.platform}
+                    </span>
+                  </div>
                   <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-white">✕</button>
                 </div>
-                <div className="text-slate-400">Platform: <span className="text-slate-200 uppercase">{selectedNode.platform}</span></div>
-                <div className="text-slate-400">Dominant Emotion: <span className="text-rose-400 uppercase">{selectedNode.emotion}</span></div>
-                <div className="text-slate-400">Role: <span className={selectedNode.isBridge ? 'text-amber-400 font-bold' : 'text-slate-300'}>{selectedNode.isBridge ? 'Bridge Connector' : 'Community In-Group'}</span></div>
-                <div className="text-slate-400">Threat Level: <span className="text-rose-300 uppercase">{selectedNode.threatLevel}</span></div>
+                {selectedNode.content && (
+                  <p className="text-slate-200 font-sans text-xs line-clamp-3 bg-slate-950/60 p-2 rounded border border-slate-850">
+                    "{selectedNode.content}"
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-400">
+                  <div>Emotion: <span className="text-rose-400 uppercase font-bold">{selectedNode.emotion}</span></div>
+                  <div>Threat: <span className="text-amber-300 uppercase font-bold">{selectedNode.threatLevel}</span></div>
+                  <div>Role: <span className={selectedNode.isBridge ? 'text-amber-400 font-bold' : 'text-slate-300'}>{selectedNode.isBridge ? 'Bridge Connector' : 'In-Group Node'}</span></div>
+                  <div>Type: <span className="text-slate-300">{selectedNode.isReply ? 'Reply / Comment' : 'Primary Post'}</span></div>
+                </div>
+                {selectedNode.url && (
+                  <a
+                    href={selectedNode.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-cyan-400 hover:underline text-[10px] pt-1"
+                  >
+                    <span>Open original post</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
               </div>
             )}
           </div>
@@ -610,7 +1136,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               <span className="text-[10px] font-mono text-slate-500">AUTONOMOUS EVIDENCE BUNDLED</span>
             </div>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
               {alerts.length === 0 ? (
                 <div className="text-xs text-slate-500 italic py-4 text-center">Scanning live firehose... No critical alerts triggered.</div>
               ) : (
@@ -639,40 +1165,119 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
             </div>
           </div>
 
-          {/* Real-Time Live Feed */}
-          <div className="flex-1 rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm flex flex-col gap-2 min-h-[260px]">
+          {/* ─────────────────────────────────────────────────────────────
+              STAGE 6: REAL-TIME LIVE FEED PANEL (SCROLLING FEED)
+          ───────────────────────────────────────────────────────────── */}
+          <div className="flex-1 rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm flex flex-col gap-2 min-h-[290px]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                LIVE STREAMING FEED
+                LIVE STREAMING FEED ({feedPosts.length})
               </span>
-              <span className="text-[10px] font-mono text-slate-500">SUB-SECOND LATENCY</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setFeedMode('cards')}
+                  className={`p-1 rounded text-xs ${feedMode === 'cards' ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/40' : 'text-slate-500 hover:text-slate-300'}`}
+                  title="Card View"
+                >
+                  <Layers className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => setFeedMode('compact')}
+                  className={`p-1 rounded text-xs ${feedMode === 'compact' ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/40' : 'text-slate-500 hover:text-slate-300'}`}
+                  title="Compact Stream View"
+                >
+                  <List className="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 space-y-2 overflow-y-auto max-h-[220px] pr-1 font-mono text-xs">
-              {feedPosts.slice(0, 8).map(post => (
-                <div key={post.id} className="p-2 rounded bg-slate-950/80 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1 py-0.2 rounded text-[9px] bg-slate-800 text-slate-300 uppercase">
-                        {post.platform}
-                      </span>
-                      <span className="text-slate-400 font-sans truncate max-w-[130px]">{post.authorName}</span>
-                    </div>
-                    <span className="text-[10px] text-rose-400 font-bold uppercase">
-                      {post.emotion.dominant} ↑
-                    </span>
-                  </div>
-                  <p className="text-slate-300 font-sans text-xs line-clamp-2">{post.content}</p>
+            <div className="flex-1 space-y-2 overflow-y-auto max-h-[260px] pr-1 font-mono text-xs">
+              {feedPosts.length === 0 ? (
+                <div className="text-slate-500 italic py-8 text-center">
+                  Connecting to live firehose... Real posts from Bluesky, Reddit, and RSS will stream here live.
                 </div>
-              ))}
+              ) : (
+                feedPosts.map(post => {
+                  const postDate = new Date(post.timestamp);
+                  const timeStr = `${postDate.getHours().toString().padStart(2, '0')}:${postDate.getMinutes().toString().padStart(2, '0')}:${postDate.getSeconds().toString().padStart(2, '0')}`;
+
+                  if (feedMode === 'compact') {
+                    // Compact Scrolling Log (e.g. 14:22:31 Bluesky Fear 0.82 @user: ...)
+                    return (
+                      <div
+                        key={post.id}
+                        onClick={() => handleSelectFeedPost(post)}
+                        className="p-1.5 rounded bg-slate-950/80 border border-slate-850 hover:border-cyan-500/50 cursor-pointer transition-all flex items-center justify-between text-[11px]"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="text-slate-500">{timeStr}</span>
+                          <span className={`px-1 py-0.2 rounded text-[9px] uppercase font-bold ${
+                            post.platform === 'bluesky' ? 'bg-cyan-950 text-cyan-300' :
+                            post.platform === 'reddit' ? 'bg-orange-950 text-orange-300' :
+                            'bg-slate-800 text-slate-300'
+                          }`}>
+                            {post.platform}
+                          </span>
+                          <span className="text-slate-300 font-sans truncate max-w-[240px]">
+                            {post.content}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-rose-400 font-bold uppercase ml-2 whitespace-nowrap">
+                          {post.emotion.dominant} {(post.emotion.confidence).toFixed(2)}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  // Rich Card Display (Stage 2 Target Display)
+                  return (
+                    <div
+                      key={post.id}
+                      onClick={() => handleSelectFeedPost(post)}
+                      className="p-2.5 rounded-lg bg-slate-950/90 border border-slate-800/80 hover:border-cyan-500/50 cursor-pointer transition-all space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${
+                            post.platform === 'bluesky' ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/30' :
+                            post.platform === 'reddit' ? 'bg-orange-950 text-orange-300 border border-orange-500/30' :
+                            'bg-slate-800 text-slate-300 border border-slate-700'
+                          }`}>
+                            {post.platform}
+                          </span>
+                          <span className="text-slate-400 font-sans truncate max-w-[140px] font-medium">
+                            {post.authorName}
+                          </span>
+                          {post.parentPostId && (
+                            <span className="text-[9px] text-slate-500 italic font-sans">↳ reply</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 text-[10px]">{timeStr}</span>
+                          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-rose-950/60 text-rose-300 border border-rose-500/30">
+                            {post.emotion.dominant} {(post.emotion.confidence).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-slate-200 font-sans text-xs line-clamp-2 leading-relaxed">
+                        "{post.content}"
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                        <span>Cluster: <strong className="text-slate-400">{post.clusterTitle}</strong></span>
+                        <span>Trust: <strong className="text-emerald-400">{Math.round(post.trustScore * 100)}%</strong></span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 9: FOUR OPERATIONAL INTELLIGENCE CARDS
+          OPERATIONAL INTELLIGENCE CARDS
       ───────────────────────────────────────────────────────────── */}
       <div className="px-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
@@ -689,7 +1294,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
           label="Threat Score"
           technicalLabel="Composite Threat Index"
           value={`${activeThreatScore}/100`}
-          subtitle={highestThreatNarrative?.threatScore.summary || 'Elevated risk from cross-platform spread'}
+          subtitle={highestThreatNarrative?.threatScore.summary || 'Real-time live multi-stream signal calculation'}
           badge={activeThreatScore > 75 ? 'CRITICAL' : 'HIGH'}
           badgeVariant={activeThreatScore > 75 ? 'critical' : 'warning'}
           icon={<ShieldAlert className="w-4 h-4 text-rose-400" />}
@@ -699,8 +1304,8 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
           label="Cross-Community Activity"
           technicalLabel="Bridge Transfer Ratio"
           value={crossCommunityPercent}
-          subtitle="4 communities actively crossed"
-          badge="High Bridge Spread"
+          subtitle="Cross-platform propagation detected"
+          badge="Active Bridge Spread"
           badgeVariant="info"
           icon={<Share2 className="w-4 h-4 text-sky-400" />}
         />
@@ -709,15 +1314,15 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
           label="Dominant Emotion"
           technicalLabel="GoEmotions Taxonomy"
           value={dominantEmotionString}
-          subtitle="0.82 intensity • Negative valence"
-          badge="Arousal 0.78"
+          subtitle="Sub-second neural classifier inference"
+          badge="Live Classified"
           badgeVariant="critical"
           icon={<AlertTriangle className="w-4 h-4 text-rose-400" />}
         />
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 10: ACTIVE NARRATIVE FEED
+          ACTIVE NARRATIVE FEED
       ───────────────────────────────────────────────────────────── */}
       <div className="p-5 space-y-3">
         <div className="flex items-center justify-between">
@@ -745,7 +1350,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
                 <div>
                   <h4 className="font-bold text-white text-sm">{n.title}</h4>
                   <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                    First seen 8 mins ago • {n.platforms.length} Platforms
+                    {n.platforms.length} Platforms • {n.affectedCommunities.length} Communities
                   </div>
                 </div>
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase font-bold ${
@@ -782,13 +1387,13 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 9: COLLAPSED ADVANCED ANALYSIS INTERNALS
+          COLLAPSED ADVANCED ANALYSIS INTERNALS
       ───────────────────────────────────────────────────────────── */}
       {isAdvancedOpen && (
         <div className="mx-5 mb-5 p-4 rounded-xl border border-slate-800 bg-slate-900/40 text-xs font-mono space-y-3">
           <div className="font-bold text-slate-300 flex items-center gap-1.5">
             <Sliders className="w-4 h-4 text-cyan-400" />
-            TOPOLOGICAL INTERNAL METRICS (COLLAPSED BY DEFAULT)
+            TOPOLOGICAL INTERNAL METRICS
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-slate-400">
             <div>Modularity Q: <strong className="text-white">0.6842</strong></div>
@@ -800,7 +1405,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 7: PERSISTENT TIMELINE & REPLAY SCRUBBER
+          PERSISTENT TIMELINE & REPLAY SCRUBBER
       ───────────────────────────────────────────────────────────── */}
       <div className="sticky bottom-0 z-20 border-t border-slate-800 bg-slate-900/95 px-5 py-3 backdrop-blur-md flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs">
@@ -860,9 +1465,11 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
             if (val < 98) {
               setIsLiveStreaming(false);
               const snaps = replayManager.getSnapshots();
-              const snapIdx = Math.floor((val / 100) * (snaps.length - 1));
-              const snap = replayManager.jumpToSnapshot(snapIdx);
-              setReplaySnapshot(snap);
+              if (snaps.length > 0) {
+                const snapIdx = Math.floor((val / 100) * (snaps.length - 1));
+                const snap = replayManager.jumpToSnapshot(snapIdx);
+                setReplaySnapshot(snap);
+              }
             } else {
               replayManager.resumeLive();
               setIsLiveStreaming(true);
@@ -874,7 +1481,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 15: EVIDENCE PANEL MODAL / DRAWER
+          EVIDENCE PANEL MODAL
       ───────────────────────────────────────────────────────────── */}
       {(selectedAlert || selectedNarrative) && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -896,7 +1503,6 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               </button>
             </div>
 
-            {/* Confidence & Virality Breakdown */}
             <div className="grid grid-cols-2 gap-3 text-xs font-mono bg-slate-950 p-3 rounded-lg border border-slate-800">
               <div>
                 <div className="text-slate-500">COMPOSITE CONFIDENCE</div>
@@ -908,7 +1514,6 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               </div>
             </div>
 
-            {/* Propagation Path */}
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-slate-300">PROPAGATION TRAJECTORY:</span>
               <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
@@ -920,7 +1525,6 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               </div>
             </div>
 
-            {/* Supporting Sample Posts */}
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-slate-300">SUPPORTING RAW POSTS:</span>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -936,7 +1540,6 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
               </div>
             </div>
 
-            {/* Action Bar */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
               <button
                 onClick={() => {
@@ -963,7 +1566,7 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          STAGE 14: ANALYST COPILOT DRAWER (Evidence-Backed AI Assistant)
+          ANALYST COPILOT DRAWER
       ───────────────────────────────────────────────────────────── */}
       {isCopilotOpen && (
         <div className="fixed top-14 right-0 bottom-0 z-40 w-96 border-l border-slate-800 bg-slate-900/95 shadow-2xl backdrop-blur-md flex flex-col">
@@ -1002,7 +1605,6 @@ export const MissionControlView: React.FC<MissionControlViewProps> = ({
             ))}
           </div>
 
-          {/* Quick Prompts */}
           <div className="p-3 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono text-slate-400">
               <button

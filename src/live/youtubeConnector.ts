@@ -42,8 +42,12 @@ export class YouTubeConnector implements LiveConnector {
     this.handlers.push(handler);
   }
 
-  public on(handler: LiveEventHandler): void {
+  public onEvent(handler: LiveEventHandler): void {
     this.eventHandlers.push(handler);
+  }
+
+  public on(handler: LiveEventHandler): void {
+    this.onEvent(handler);
   }
 
   public getStatus(): ConnectorState {

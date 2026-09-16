@@ -1,4 +1,4 @@
-export type ConnectorStatus = 'idle' | 'connecting' | 'live' | 'paused' | 'error' | 'rate_limited';
+export type ConnectorStatus = 'idle' | 'connecting' | 'connected' | 'live' | 'reconnecting' | 'offline' | 'rate_limited' | 'error' | 'paused';
 
 export type LivePlatform = 'reddit' | 'bluesky' | 'rss' | 'x' | 'youtube' | 'instagram' | 'local';
 
@@ -12,6 +12,7 @@ export interface LivePost {
   subreddit?: string; // reddit
   threadId?: string;
   parentId?: string;
+  isReply?: boolean;
   url?: string;
   metadata?: Record<string, unknown>;
 }
@@ -24,6 +25,10 @@ export interface ConnectorConfig {
   apiKey?: string; // for X, YouTube, Reddit, Meta
   apiSecret?: string;
   accessToken?: string;
+  clientId?: string;
+  clientSecret?: string;
+  username?: string;
+  password?: string;
 }
 
 export interface ConnectorState {
@@ -34,6 +39,14 @@ export interface ConnectorState {
   itemsIngested: number;
   errorMessage?: string;
   rateLimitResetAt?: number;
+  latencyMs?: number;
+  wsState?: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' | 'N/A';
+  pollIntervalMs?: number;
+  eventsReceived?: number;
+  eventsProcessed?: number;
+  queueDepth?: number;
+  avgLatencyMs?: number;
+  endpoint?: string;
 }
 
 export interface LiveEvent {
@@ -46,15 +59,16 @@ export interface LiveEvent {
 export type LiveEventHandler = (event: LiveEvent) => void;
 
 /**
- * Stage 1: Unified Live Streaming Connector Interface
+ * Stage 1 & Architecture Standard: Unified Live Streaming Connector Interface
  */
 export interface LiveConnector {
-  id: string;
-  platform: LivePlatform;
+  readonly id: string;
+  readonly platform: LivePlatform;
   connect(): Promise<void> | void;
-  disconnect(): void;
-  onMessage(handler: (post: LivePost) => void): void;
+  disconnect(): Promise<void> | void;
+  onEvent(cb: (event: LiveEvent) => void): void;
   getStatus(): ConnectorState;
+  onMessage?(handler: (post: LivePost) => void): void;
   start?(): Promise<void> | void;
   stop?(): void;
 }

@@ -14,8 +14,12 @@ export class LocalStreamConnector implements LiveConnector {
     this.state = { id: 'local', platform: 'local', status: 'idle', lastPollAt: null, itemsIngested: 0 };
   }
 
-  on(handler: LiveEventHandler): void {
+  onEvent(handler: LiveEventHandler): void {
     this.handlers.push(handler);
+  }
+
+  on(handler: LiveEventHandler): void {
+    this.onEvent(handler);
   }
 
   onMessage(handler: (post: LivePost) => void): void {

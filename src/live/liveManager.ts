@@ -1,11 +1,11 @@
-import { RedditConnector } from './redditConnector';
+import { RedditConnector, DEFAULT_SUBREDDITS } from './redditConnector';
 import { BlueskyConnector } from './blueskyConnector';
-import { RssConnector } from './rssConnector';
+import { RssConnector, DEFAULT_RSS_FEEDS } from './rssConnector';
 import { LocalStreamConnector } from './localStreamConnector';
 import { XConnector } from './xConnector';
 import { YouTubeConnector } from './youtubeConnector';
 import { InstagramConnector } from './instagramConnector';
-import { LivePost, ConnectorState, ConnectorConfig, LiveConnector } from './types';
+import { LivePost, ConnectorState, ConnectorConfig, LiveConnector, LiveEvent } from './types';
 
 export interface LiveGraphUpdate {
   newAgentId: string;
@@ -14,15 +14,16 @@ export interface LiveGraphUpdate {
   timestamp: number;
   platform: LivePost['platform'];
   parentAgentId?: string;
+  isReply?: boolean;
 }
 
 export interface LiveManagerConfig {
-  reddit?: { subreddits: string[] } & Partial<ConnectorConfig>;
-  bluesky?: { keywords: string[] } & Partial<ConnectorConfig>;
-  rss?: { feeds: string[] } & Partial<ConnectorConfig>;
-  x?: { query: string } & Partial<ConnectorConfig>;
-  youtube?: { videoIds: string[] } & Partial<ConnectorConfig>;
-  instagram?: { igMediaIds: string[] } & Partial<ConnectorConfig>;
+  reddit?: { subreddits?: string[] } & Partial<ConnectorConfig>;
+  bluesky?: { keywords?: string[] } & Partial<ConnectorConfig>;
+  rss?: { feeds?: string[] } & Partial<ConnectorConfig>;
+  x?: { query?: string } & Partial<ConnectorConfig>;
+  youtube?: { videoIds?: string[] } & Partial<ConnectorConfig>;
+  instagram?: { igMediaIds?: string[] } & Partial<ConnectorConfig>;
   offline?: boolean;
   onUpdate?: (update: LiveGraphUpdate) => void;
   onPost?: (post: LivePost) => void;
@@ -30,17 +31,18 @@ export interface LiveManagerConfig {
 }
 
 export class LiveManager {
-  reddit: RedditConnector | null = null;
-  bluesky: BlueskyConnector | null = null;
-  rss: RssConnector | null = null;
-  x: XConnector | null = null;
-  youtube: YouTubeConnector | null = null;
-  instagram: InstagramConnector | null = null;
+  reddit: RedditConnector;
+  bluesky: BlueskyConnector;
+  rss: RssConnector;
+  x: XConnector;
+  youtube: YouTubeConnector;
+  instagram: InstagramConnector;
   local: LocalStreamConnector;
 
   private connectors: Map<string, LiveConnector> = new Map();
   private graphHandlers: Array<(update: LiveGraphUpdate) => void> = [];
   private postHandlers: Array<(post: LivePost) => void> = [];
+  private statusHandlers: Array<(state: ConnectorState) => void> = [];
 
   // Rolling comments/second calculation window
   private recentTimestamps: number[] = [];
@@ -48,45 +50,51 @@ export class LiveManager {
   constructor(cfg: LiveManagerConfig = {}) {
     const offline = cfg.offline ?? false;
 
-    // Reddit
-    if (cfg.reddit) {
-      this.reddit = new RedditConnector(cfg.reddit.subreddits, { ...cfg.reddit, offline });
-      this.registerConnector(this.reddit, cfg);
-    }
+    // Bluesky (Highest Priority real Jetstream firehose)
+    this.bluesky = new BlueskyConnector(
+      cfg.bluesky?.keywords ?? [],
+      { ...cfg.bluesky, offline }
+    );
+    this.registerConnector(this.bluesky);
 
-    // Bluesky
-    if (cfg.bluesky) {
-      this.bluesky = new BlueskyConnector(cfg.bluesky.keywords, { ...cfg.bluesky, offline });
-      this.registerConnector(this.bluesky, cfg);
-    }
+    // Reddit (Multi-subreddit real ingestion)
+    this.reddit = new RedditConnector(
+      cfg.reddit?.subreddits ?? DEFAULT_SUBREDDITS,
+      { ...cfg.reddit, offline }
+    );
+    this.registerConnector(this.reddit);
 
-    // RSS
-    if (cfg.rss) {
-      this.rss = new RssConnector(cfg.rss.feeds, { ...cfg.rss, offline });
-      this.registerConnector(this.rss, cfg);
-    }
+    // RSS (Multi-feed breaking news ingestion)
+    this.rss = new RssConnector(
+      cfg.rss?.feeds ?? DEFAULT_RSS_FEEDS,
+      { ...cfg.rss, offline }
+    );
+    this.registerConnector(this.rss);
 
     // X (Twitter)
-    if (cfg.x) {
-      this.x = new XConnector(cfg.x.query, { ...cfg.x, offline });
-      this.registerConnector(this.x, cfg);
-    }
+    this.x = new XConnector(
+      cfg.x?.query ?? 'AI OR tech OR market OR breaking',
+      { ...cfg.x, offline }
+    );
+    this.registerConnector(this.x);
 
     // YouTube
-    if (cfg.youtube) {
-      this.youtube = new YouTubeConnector(cfg.youtube.videoIds, { ...cfg.youtube, offline });
-      this.registerConnector(this.youtube, cfg);
-    }
+    this.youtube = new YouTubeConnector(
+      cfg.youtube?.videoIds ?? [],
+      { ...cfg.youtube, offline }
+    );
+    this.registerConnector(this.youtube);
 
     // Instagram
-    if (cfg.instagram) {
-      this.instagram = new InstagramConnector(cfg.instagram.igMediaIds, { ...cfg.instagram, offline });
-      this.registerConnector(this.instagram, cfg);
-    }
+    this.instagram = new InstagramConnector(
+      cfg.instagram?.igMediaIds ?? [],
+      { ...cfg.instagram, offline }
+    );
+    this.registerConnector(this.instagram);
 
     // Local
     this.local = new LocalStreamConnector({ offline: false });
-    this.registerConnector(this.local, cfg);
+    this.registerConnector(this.local);
 
     if (cfg.onUpdate) {
       this.graphHandlers.push(cfg.onUpdate);
@@ -94,14 +102,28 @@ export class LiveManager {
     if (cfg.onPost) {
       this.postHandlers.push(cfg.onPost);
     }
+    if (cfg.onStatusChange) {
+      this.statusHandlers.push(cfg.onStatusChange);
+    }
   }
 
-  private registerConnector(connector: LiveConnector, _cfg: LiveManagerConfig): void {
+  private registerConnector(connector: LiveConnector): void {
     this.connectors.set(connector.id, connector);
-    connector.onMessage(post => {
-      this.recordIngestionTimestamp();
-      this.handlePost(post);
-      this.postHandlers.forEach(h => h(post));
+
+    connector.onEvent((event: LiveEvent) => {
+      if (event.type === 'post') {
+        const post = event.payload as LivePost;
+        this.recordIngestionTimestamp();
+        this.handlePost(post);
+        this.postHandlers.forEach(h => {
+          try { h(post); } catch (e) { console.error('Error in post handler:', e); }
+        });
+      } else if (event.type === 'status_change') {
+        const state = event.payload as ConnectorState;
+        this.statusHandlers.forEach(h => {
+          try { h(state); } catch (e) { console.error('Error in status handler:', e); }
+        });
+      }
     });
   }
 
@@ -111,6 +133,10 @@ export class LiveManager {
 
   public onPost(handler: (post: LivePost) => void): void {
     this.postHandlers.push(handler);
+  }
+
+  public onStatusChange(handler: (state: ConnectorState) => void): void {
+    this.statusHandlers.push(handler);
   }
 
   private recordIngestionTimestamp(): void {
@@ -145,18 +171,43 @@ export class LiveManager {
       timestamp: post.timestamp,
       platform: post.platform,
       parentAgentId: post.parentId ? `live-${post.platform}-${post.parentId}` : undefined,
+      isReply: post.isReply,
     };
-    this.graphHandlers.forEach(h => h(update));
+    this.graphHandlers.forEach(h => {
+      try { h(update); } catch (e) { console.error('Error in graph handler:', e); }
+    });
   }
 
   async startAll(): Promise<void> {
     for (const c of this.connectors.values()) {
-      await c.connect();
+      try {
+        await c.connect();
+      } catch (err) {
+        console.error(`Failed to connect connector ${c.id}:`, err);
+      }
     }
   }
 
   stopAll(): void {
     for (const c of this.connectors.values()) {
+      try {
+        c.disconnect();
+      } catch (err) {
+        console.error(`Failed to disconnect connector ${c.id}:`, err);
+      }
+    }
+  }
+
+  async connectConnector(id: string): Promise<void> {
+    const c = this.connectors.get(id);
+    if (c) {
+      await c.connect();
+    }
+  }
+
+  disconnectConnector(id: string): void {
+    const c = this.connectors.get(id);
+    if (c) {
       c.disconnect();
     }
   }
