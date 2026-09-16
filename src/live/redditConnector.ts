@@ -7,7 +7,7 @@
 import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler, LiveConnector, LiveEvent } from './types';
 import { DedupStore } from './dedup';
 
-export const DEFAULT_SUBREDDITS = ['technology', 'science', 'worldnews'];
+export const DEFAULT_SUBREDDITS = ['technology', 'worldnews', 'news', 'science', 'artificial'];
 
 export class RedditConnector implements LiveConnector {
   public readonly id = 'reddit';
@@ -228,7 +228,7 @@ export class RedditConnector implements LiveConnector {
    */
   private async fetchRedditData(subreddit: string, isComments: boolean): Promise<LivePost[]> {
     const isBrowser = typeof window !== 'undefined';
-    const path = isComments ? `r/${subreddit}/comments` : `r/${subreddit}/new`;
+    const path = isComments ? `r/${subreddit}/comments` : `r/${subreddit}/hot`;
 
     // Try RSS/Atom first as it is public, highly reliable, and avoids 403 blocks
     const rssUrl = `https://www.reddit.com/${path}.rss?limit=${this.config.maxItemsPerPoll}`;

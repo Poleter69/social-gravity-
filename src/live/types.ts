@@ -22,6 +22,7 @@ export interface ConnectorConfig {
   maxItemsPerPoll?: number; // default 100
   dedupWindowMs?: number; // default 300000 (5 min)
   offline?: boolean; // if true, only use cached/synthetic data
+  sampleRate?: number; // sampling probability 0.0 - 1.0 (e.g. 0.30 for 70% reduction)
   apiKey?: string; // for X, YouTube, Reddit, Meta
   apiSecret?: string;
   accessToken?: string;

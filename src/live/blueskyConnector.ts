@@ -43,6 +43,7 @@ export class BlueskyConnector implements LiveConnector {
   private dedup: DedupStore;
   private ws: WebSocket | null = null;
   private config: Required<Pick<ConnectorConfig, 'pollIntervalMs' | 'maxItemsPerPoll' | 'dedupWindowMs' | 'offline'>>;
+  private sampleRate: number;
   private eventHandlers: LiveEventHandler[] = [];
   private messageHandlers: Array<(post: LivePost) => void> = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -56,6 +57,7 @@ export class BlueskyConnector implements LiveConnector {
     private keywords: string[] = [],
     config?: Partial<ConnectorConfig>
   ) {
+    this.sampleRate = config?.sampleRate ?? 0.30; // Default 30% sample rate (reduces firehose by 70%)
     this.config = {
       pollIntervalMs: 0,
       maxItemsPerPoll: config?.maxItemsPerPoll ?? 500,
@@ -245,6 +247,16 @@ export class BlueskyConnector implements LiveConnector {
         }
 
         const text = record.text;
+
+        // Reduce Bluesky by ~70% (sample rate 30%)
+        if (Math.random() > this.sampleRate) {
+          return;
+        }
+
+        // Filter short noise (< 10 chars)
+        if (text.trim().length < 10) {
+          return;
+        }
 
         // Keyword filtering if keywords are specified
         if (this.keywords.length > 0) {

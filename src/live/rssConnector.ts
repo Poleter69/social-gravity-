@@ -8,10 +8,13 @@ import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler, LiveConnec
 import { DedupStore } from './dedup';
 
 export const DEFAULT_RSS_FEEDS = [
-  'https://feeds.bbci.co.uk/news/world/rss.xml',
-  'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
   'https://news.ycombinator.com/rss',
+  'https://feeds.bbci.co.uk/news/world/rss.xml',
+  'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',
+  'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+  'https://techcrunch.com/feed/',
   'https://www.theguardian.com/world/rss',
+  'https://www.theverge.com/rss/index.xml',
 ];
 
 export class RssConnector implements LiveConnector {
@@ -38,7 +41,7 @@ export class RssConnector implements LiveConnector {
     config?: Partial<ConnectorConfig>
   ) {
     this.config = {
-      pollIntervalMs: config?.pollIntervalMs ?? 30_000,
+      pollIntervalMs: config?.pollIntervalMs ?? 12_000,
       maxItemsPerPoll: config?.maxItemsPerPoll ?? 25,
       dedupWindowMs: config?.dedupWindowMs ?? 3_600_000,
       offline: config?.offline ?? false,
