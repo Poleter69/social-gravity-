@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { SimulationState } from '../../../simulation/types';
 import { Society } from '../../../society/types/society';
+import { NetworkCanvas } from '../../../society/components/NetworkCanvas';
 
 export interface ReplayWorkspaceProps {
   simState: SimulationState | null;
@@ -151,104 +152,116 @@ export const ReplayWorkspace: React.FC<ReplayWorkspaceProps> = ({
         </div>
       </div>
 
-      {/* Center: NLE Scrubber Bar & Keyframe Timeline */}
-      <div className="bg-[#111114] border border-[#27272A] rounded-2xl p-5 mb-4 shrink-0 space-y-3">
-        <div className="flex items-center justify-between text-[12px] font-mono">
-          <div className="flex items-center gap-2">
-            <span className="text-[#FAFAFA] font-semibold">NLE Scrub Track:</span>
-            <span className="text-[#4F8CFF]">t={currentRound}</span>
-            <span className="text-[#71717A]">/ t={Math.max(maxRecordedRound, 40)}</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="text-[#71717A]">SPEED:</span>
-            {[0.5, 1.0, 2.0, 4.0].map((s) => (
-              <button
-                key={s}
-                onClick={() => setPlaybackSpeed(s)}
-                className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                  playbackSpeed === s
-                    ? 'bg-[#27272A] text-[#4F8CFF] font-bold'
-                    : 'text-[#71717A] hover:text-[#A1A1AA]'
-                }`}
-              >
-                {s}x
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Scrubber slider */}
-        <div className="relative pt-1 pb-2">
-          <input
-            type="range"
-            min={0}
-            max={Math.max(maxRecordedRound, 40)}
-            value={currentRound}
-            onChange={(e) => onScrubToRound(Number(e.target.value))}
-            className="w-full accent-[#4F8CFF] bg-[#27272A] h-2 rounded-lg appearance-none cursor-pointer"
+      {/* Center & Bottom Split Area: Network Canvas Replay (60%) + Scrubber & Audit Log (40%) */}
+      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+        {/* Left Area: Interactive Replay Network Canvas */}
+        <div className="flex-1 h-full min-w-0 rounded-2xl overflow-hidden border border-[#27272A] relative">
+          <NetworkCanvas
+            society={society}
+            simulationStates={simState?.agentStates}
+            patientZeroIds={simState?.patientZeroIds}
+            recentTransmissions={simState?.recentTransmissions}
+            onScrubToRound={onScrubToRound}
+            className="w-full h-full"
           />
-
-          {/* Keyframe Markers along timeline */}
-          <div className="flex justify-between text-[10px] font-mono text-[#71717A] pt-1">
-            <span>t=0 (Seed)</span>
-            <span>t=3 (First Bridge)</span>
-            <span>t=8 (Peak R₀)</span>
-            <span>t=12 (Fact-Check)</span>
-            <span>t={Math.max(maxRecordedRound, 40)} (End)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Area: Chronological Round Events & Telemetry */}
-      <div className="flex-1 bg-[#111114] border border-[#27272A] rounded-2xl flex flex-col overflow-hidden min-h-0">
-        <div className="h-10 px-4 bg-[#18181B]/80 border-b border-[#27272A] flex items-center justify-between text-[11px] font-mono text-[#71717A]">
-          <span>CHRONOLOGICAL TELEMETRY AUDIT LOG</span>
-          <span>{history.length} RECORDED TICKS</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {history.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-[#71717A] text-[13px]">
-              No round telemetry recorded yet. Start or step the simulation to record ticks.
+        {/* Right Area: NLE Scrubber & Chronological Audit Log (40%) */}
+        <div className="w-96 flex flex-col gap-4 shrink-0 h-full min-h-0">
+          {/* NLE Scrubber Bar */}
+          <div className="bg-[#111114] border border-[#27272A] rounded-2xl p-4 shrink-0 space-y-3">
+            <div className="flex items-center justify-between text-[12px] font-mono">
+              <div className="flex items-center gap-2">
+                <span className="text-[#FAFAFA] font-semibold">NLE Scrub Track:</span>
+                <span className="text-[#4F8CFF]">t={currentRound}</span>
+                <span className="text-[#71717A]">/ t={Math.max(maxRecordedRound, 40)}</span>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="text-[#71717A]">SPEED:</span>
+                {[0.5, 1.0, 2.0, 4.0].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setPlaybackSpeed(s)}
+                    className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                      playbackSpeed === s
+                        ? 'bg-[#27272A] text-[#4F8CFF] font-bold'
+                        : 'text-[#71717A] hover:text-[#A1A1AA]'
+                    }`}
+                  >
+                    {s}x
+                  </button>
+                ))}
+              </div>
             </div>
-          ) : (
-            history.map((t) => {
-              const isCurrent = t.round === currentRound;
 
-              return (
-                <button
-                  key={t.round}
-                  onClick={() => onScrubToRound(t.round)}
-                  className={`w-full flex items-center justify-between p-2.5 px-4 rounded-xl border text-left font-mono text-[12px] transition-colors cursor-pointer ${
-                    isCurrent
-                      ? 'bg-[#18181B] border-[#4F8CFF] text-[#FAFAFA]'
-                      : 'bg-[#141417] border-[#27272A] text-[#A1A1AA] hover:border-[#3F3F46]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-2 h-2 rounded-full ${isCurrent ? 'bg-[#4F8CFF]' : 'bg-[#71717A]'}`} />
-                    <span className="font-bold text-[#FAFAFA]">Round {t.round}</span>
-                    <span className="text-[#71717A]">
-                      R₀: <strong className={t.r0 > 1 ? 'text-[#EF4444]' : 'text-[#22C55E]'}>{t.r0.toFixed(2)}</strong>
-                    </span>
-                  </div>
+            {/* Scrubber slider */}
+            <div className="relative pt-1 pb-2">
+              <input
+                type="range"
+                min={0}
+                max={Math.max(maxRecordedRound, 40)}
+                value={currentRound}
+                onChange={(e) => onScrubToRound(Number(e.target.value))}
+                className="w-full accent-[#4F8CFF] bg-[#27272A] h-2 rounded-lg appearance-none cursor-pointer"
+              />
 
-                  <div className="flex items-center gap-4 text-[11px]">
-                    <span className="text-[#EF4444]">
-                      {t.believerCount} Believers ({((t.believerCount / totalPop) * 100).toFixed(0)}%)
-                    </span>
-                    <span className="text-[#22C55E]">
-                      {t.debunkerCount} Debunkers
-                    </span>
-                    <span className="text-[#71717A]">
-                      Velocity: {t.cascadeVelocity}
-                    </span>
-                  </div>
-                </button>
-              );
-            })
-          )}
+              {/* Keyframe Markers along timeline */}
+              <div className="flex justify-between text-[10px] font-mono text-[#71717A] pt-1">
+                <span>t=0 (Seed)</span>
+                <span>t=3 (First Bridge)</span>
+                <span>t=8 (Peak R₀)</span>
+                <span>t=12 (Fact-Check)</span>
+                <span>t={Math.max(maxRecordedRound, 40)} (End)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Area: Chronological Round Events & Telemetry */}
+          <div className="flex-1 bg-[#111114] border border-[#27272A] rounded-2xl flex flex-col overflow-hidden min-h-0">
+            <div className="h-10 px-4 bg-[#18181B]/80 border-b border-[#27272A] flex items-center justify-between text-[11px] font-mono text-[#71717A]">
+              <span>CHRONOLOGICAL TELEMETRY AUDIT LOG</span>
+              <span>{history.length} TICKS</span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {history.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-[#71717A] text-[13px] text-center p-4">
+                  No round telemetry recorded yet. Start or step the simulation to record ticks.
+                </div>
+              ) : (
+                history.map((t) => {
+                  const isCurrent = t.round === currentRound;
+
+                  return (
+                    <button
+                      key={t.round}
+                      onClick={() => onScrubToRound(t.round)}
+                      className={`w-full flex items-center justify-between p-2.5 px-3 rounded-xl border text-left font-mono text-[11px] transition-colors cursor-pointer ${
+                        isCurrent
+                          ? 'bg-[#18181B] border-[#4F8CFF] text-[#FAFAFA]'
+                          : 'bg-[#141417] border-[#27272A] text-[#A1A1AA] hover:border-[#3F3F46]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${isCurrent ? 'bg-[#4F8CFF]' : 'bg-[#71717A]'}`} />
+                        <span className="font-bold text-[#FAFAFA]">Round {t.round}</span>
+                        <span className="text-[#71717A]">
+                          R₀: <strong className={t.r0 > 1 ? 'text-[#EF4444]' : 'text-[#22C55E]'}>{t.r0.toFixed(1)}</strong>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className="text-[#EF4444]">
+                          {t.believerCount} Believers
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

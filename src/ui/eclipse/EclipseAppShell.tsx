@@ -216,6 +216,8 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
                 className="h-full w-full"
               >
                 <MissionControlWorkspace
+                  society={activeSociety}
+                  simState={simState}
                   onNavigateToReplay={() => setCurrentWorkspace('replay')}
                   onNavigateToCompare={() => {
                     onComputeComparison();

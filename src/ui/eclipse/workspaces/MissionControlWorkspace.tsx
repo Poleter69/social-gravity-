@@ -15,6 +15,7 @@ import {
   GitFork,
   ArrowRight,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 import {
   LivePost,
@@ -30,8 +31,14 @@ import {
 import { NarrativeFusionEngine, UnifiedNarrative } from '../../../fusion';
 import { MetricCard } from '../components/MetricCard';
 import { EmotionCapsule } from '../components/EmotionCapsule';
+import { Society } from '../../../society/types/society';
+import { SimulationState } from '../../../simulation/types';
+import { societyGenerator } from '../../../society/generators/societyGenerator';
+import { NetworkCanvas } from '../../../society/components/NetworkCanvas';
 
 export interface MissionControlWorkspaceProps {
+  society?: Society;
+  simState?: SimulationState | null;
   onNavigateToReplay?: () => void;
   onNavigateToCompare?: () => void;
   onNavigateToExport?: () => void;
@@ -67,12 +74,28 @@ interface SimulatedEdge {
 }
 
 export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = ({
+  society,
+  simState,
+  onNavigateToReplay,
   onNavigateToCompare,
   onOpenAlertExplanation,
   onDeployInoculation,
   onInjectDebunk,
   isStreaming = true,
 }) => {
+  const defaultSociety = useMemo(
+    () =>
+      societyGenerator.generate({
+        name: 'Live Incident Intelligence Grid',
+        archetype: 'online_community',
+        populationSize: 100,
+        influencerRatio: 0.05,
+        seed: 42,
+      }),
+    []
+  );
+  const activeSociety = society || defaultSociety;
+  const [isHudOpen, setIsHudOpen] = useState(true);
   // ── Core Engines (Untouched Backend) ──────────────────────────────────────
   const pipeline = useMemo(() => new LiveProcessingPipeline(), []);
   const fusionEngine = useMemo(() => new NarrativeFusionEngine(), []);
@@ -442,21 +465,6 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
     return () => cancelAnimationFrame(animId);
   }, [selectedEmotionFilter]);
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    const clicked = nodesRef.current.find((n) => {
-      const dx = n.x - clickX;
-      const dy = n.y - clickY;
-      return Math.sqrt(dx * dx + dy * dy) <= n.radius + 6;
-    });
-
-    setSelectedNode(clicked || null);
-  };
 
   // ── Copilot Query Handler ─────────────────────────────────────────────────
   const handleCopilotSend = () => {
@@ -515,16 +523,20 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
     <div className="h-full w-full flex overflow-hidden bg-[#09090B] text-[#FAFAFA] select-none">
       {/* ═══════════════════════════════════════════════════════════════
           LEFT AREA: HERO LIVE NETWORK CANVAS (~70%)
-          100vh strict bound, floating 4-card HUD + floating Emotion Capsule
+          100vh strict bound with Palantir-level infinite canvas
       ═══════════════════════════════════════════════════════════════ */}
       <div className="flex-1 h-full relative overflow-hidden bg-[#09090B] border-r border-[#27272A]">
-        {/* Real-Time 60 FPS Canvas */}
-        <canvas
-          ref={canvasRef}
-          width={1100}
-          height={820}
-          onClick={handleCanvasClick}
-          className="w-full h-full block cursor-crosshair"
+        {/* Flagship Palantir/Figma Infinite Canvas */}
+        <NetworkCanvas
+          society={activeSociety}
+          simulationStates={simState?.agentStates}
+          patientZeroIds={simState?.patientZeroIds}
+          recentTransmissions={simState?.recentTransmissions}
+          livePosts={feedPosts}
+          narratives={narratives}
+          onDeployInoculation={onDeployInoculation}
+          onScrubToRound={onNavigateToReplay ? () => onNavigateToReplay() : undefined}
+          className="w-full h-full"
         />
 
         {/* Floating Emotion Capsule (Top-Right of Canvas) */}
@@ -537,82 +549,66 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
           />
         </div>
 
-        {/* Floating Intelligence HUD (Top-Left) — Strictly Four Cards per Specification */}
-        <div className="absolute top-4 left-4 z-20 grid grid-cols-2 gap-3 w-84 pointer-events-auto">
-          {/* Card 1: Threat Level */}
-          <MetricCard
-            label="Threat Level"
-            value={activeAlertsCount > 0 ? 'CRITICAL' : 'NOMINAL'}
-            subtitle={activeAlertsCount > 0 ? `${activeAlertsCount} active outbreak alert` : 'All telemetry subcritical'}
-            variant={activeAlertsCount > 0 ? 'critical' : 'success'}
-            className="p-3.5"
-          />
-
-          {/* Card 2: Spread Rate */}
-          <MetricCard
-            label="Spread Rate"
-            value="R₀ 2.41"
-            subtitle={`Ingestion: ${commentsPerSec}/s • Velocity: +4.2/t`}
-            variant="warning"
-            className="p-3.5"
-          />
-
-          {/* Card 3: Active Narratives */}
-          <MetricCard
-            label="Active Narratives"
-            value={`${Math.max(narratives.length, 2)} Tracked`}
-            subtitle={narratives[0]?.title ? narratives[0].title.slice(0, 22) + '...' : 'Deepfake Cascade Dominant'}
-            variant="primary"
-            className="p-3.5"
-          />
-
-          {/* Card 4: Dominant Emotion */}
-          <MetricCard
-            label="Dominant Emotion"
-            value={dominantEmotion.toUpperCase()}
-            subtitle={`${(dominantConfidence * 100).toFixed(0)}% confidence (GoEmotions)`}
-            variant={dominantEmotion === 'fear' || dominantEmotion === 'anger' ? 'critical' : 'primary'}
-            className="p-3.5"
-          />
+        {/* Floating Intelligence HUD Toggle (Top-Left, below Filter button) */}
+        <div className="absolute top-16 left-4 z-20 pointer-events-auto">
+          <button
+            onClick={() => setIsHudOpen(!isHudOpen)}
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-mono border backdrop-blur-md cursor-pointer flex items-center gap-1.5 transition-all shadow-lg ${
+              isHudOpen
+                ? 'bg-[#18181B]/95 text-[#FAFAFA] border-[#27272A]'
+                : 'bg-[#111114]/80 text-[#71717A] hover:text-[#FAFAFA] border-[#27272A]'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 text-[#00F0FF]" />
+            <span>HUD TELEMETRY</span>
+            <span className="text-[10px] text-[#71717A]">{isHudOpen ? '▲' : '▼'}</span>
+          </button>
         </div>
 
-        {/* Selected Node Inspector Overlay (Bottom-Left) */}
+        {/* Floating Intelligence HUD (Top-Left) — Strictly Four Cards per Specification */}
         <AnimatePresence>
-          {selectedNode && (
+          {isHudOpen && (
             <motion.div
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.18 }}
-              className="absolute bottom-4 left-4 w-80 bg-[#111114]/95 border border-[#27272A] rounded-xl p-4 shadow-2xl backdrop-blur-md z-20 pointer-events-auto"
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-26 left-4 z-20 grid grid-cols-2 gap-2.5 w-80 pointer-events-auto select-none"
             >
-              <div className="flex items-center justify-between pb-2 border-b border-[#27272A]">
-                <div>
-                  <span className="text-[13px] font-semibold text-[#FAFAFA]">
-                    {selectedNode.label}
-                  </span>
-                  <span className="text-[11px] font-mono text-[#71717A] ml-2 uppercase">
-                    {selectedNode.platform}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedNode(null)}
-                  className="text-[#71717A] hover:text-[#FAFAFA] p-0.5 rounded cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
+              {/* Card 1: Threat Level */}
+              <MetricCard
+                label="Threat Level"
+                value={activeAlertsCount > 0 ? 'CRITICAL' : 'NOMINAL'}
+                subtitle={activeAlertsCount > 0 ? `${activeAlertsCount} active outbreak alert` : 'All telemetry subcritical'}
+                variant={activeAlertsCount > 0 ? 'critical' : 'success'}
+                className="p-3"
+              />
 
-              {selectedNode.content && (
-                <p className="text-[12px] text-[#D4D4D8] leading-relaxed my-2 line-clamp-3">
-                  {selectedNode.content}
-                </p>
-              )}
+              {/* Card 2: Spread Rate */}
+              <MetricCard
+                label="Spread Rate"
+                value="R₀ 2.41"
+                subtitle={`Ingestion: ${commentsPerSec}/s • Velocity: +4.2/t`}
+                variant="warning"
+                className="p-3"
+              />
 
-              <div className="flex items-center justify-between text-[11px] font-mono text-[#71717A] pt-2 border-t border-[#27272A]">
-                <span>Affect: <strong className="text-[#4F8CFF] capitalize">{selectedNode.emotion}</strong></span>
-                <span>Role: <strong className={selectedNode.isBridge ? 'text-[#EF4444]' : 'text-[#71717A]'}>{selectedNode.isBridge ? 'BRIDGE NODE' : 'COMMUNITY NODE'}</strong></span>
-              </div>
+              {/* Card 3: Active Narratives */}
+              <MetricCard
+                label="Active Narratives"
+                value={`${Math.max(narratives.length, 2)} Tracked`}
+                subtitle={narratives[0]?.title ? narratives[0].title.slice(0, 18) + '...' : 'Deepfake Cascade'}
+                variant="primary"
+                className="p-3"
+              />
+
+              {/* Card 4: Dominant Emotion */}
+              <MetricCard
+                label="Dominant Emotion"
+                value={dominantEmotion.toUpperCase()}
+                subtitle={`${(dominantConfidence * 100).toFixed(0)}% confidence`}
+                variant={dominantEmotion === 'fear' || dominantEmotion === 'anger' ? 'critical' : 'primary'}
+                className="p-3"
+              />
             </motion.div>
           )}
         </AnimatePresence>
