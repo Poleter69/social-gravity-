@@ -3,13 +3,13 @@ SOCIAL GRAVITY — LATEST SYSTEM OUTPUT DOSSIER (v2.0.0-beta)
 ================================================================================
 Generated: 2026-09-16
 Current Engine Version: 2.0.0-beta
-Git Commit: 636db65
+Git Commit: c9b13b8
 Git Tag: v2.0.0-beta
 
 All primary outputs, reports, and benchmarks are saved in the project directory:
 C:\Users\suraj\Pictures\social gravity\
 
-PRIMARY TEXT FILES AVAILABLE:
+PRIMARY TEXT FILES & BINARIES AVAILABLE:
 1. V2_EVOLUTION_OUTPUT.txt                     <-- Complete output of the V2.0 run
 2. V2_EVOLUTION_MASTER_SUMMARY.txt             <-- Master summary of Milestones M1-M9
 3. V2_BASELINE_VERIFICATION_REPORT.txt         <-- Baseline audit (7/7 gates passed)
@@ -23,7 +23,8 @@ PRIMARY TEXT FILES AVAILABLE:
 11. V2_M8_RESEARCH_PUBLICATION_REPORT.txt      <-- Milestone M8: LaTeX & Reproducibility
 12. V2_M9_RELEASE_ENGINEERING_REPORT.txt       <-- Milestone M9: Release Engineering
 13. MIGRATION_GUIDE_v2.0.txt                   <-- Developer migration guide
-14. VALIDATION_AND_RELEASE_SUMMARY.txt         <-- v1.0.0-alpha release summary
+14. VALIDATION_AND_RELEASE_SUMMARY.txt         <-- Release validation summary
+15. Desktop Binary (Windows x64):              <-- src-tauri\target\release\social-gravity.exe (5.79 MB)
 
 For the full detailed output, open:
 C:\Users\suraj\Pictures\social gravity\V2_EVOLUTION_OUTPUT.txt
