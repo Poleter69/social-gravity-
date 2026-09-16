@@ -1,12 +1,15 @@
-import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler } from './types';
+import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler, LiveConnector } from './types';
 import { DedupStore } from './dedup';
 
-export class RedditConnector {
+export class RedditConnector implements LiveConnector {
+  public readonly id = 'reddit';
+  public readonly platform = 'reddit' as const;
   private state: ConnectorState;
   private dedup: DedupStore;
   private timer: ReturnType<typeof setInterval> | null = null;
-  private config: Required<ConnectorConfig>;
+  private config: Required<Pick<ConnectorConfig, 'pollIntervalMs' | 'maxItemsPerPoll' | 'dedupWindowMs' | 'offline'>>;
   private handlers: LiveEventHandler[] = [];
+  private messageHandlers: Array<(post: LivePost) => void> = [];
 
   constructor(
     private subreddits: string[], // e.g. ['worldnews', 'technology']
@@ -30,14 +33,29 @@ export class RedditConnector {
 
   on(handler: LiveEventHandler): void { this.handlers.push(handler); }
 
+  onMessage(handler: (post: LivePost) => void): void {
+    this.messageHandlers.push(handler);
+  }
+
   private emit(type: 'post' | 'status_change' | 'error', payload: LivePost | ConnectorState | Error): void {
     const event = { type, connector: 'reddit', payload, timestamp: Date.now() };
     this.handlers.forEach(h => h(event));
+    if (type === 'post') {
+      this.messageHandlers.forEach(h => h(payload as LivePost));
+    }
   }
 
   private updateStatus(status: ConnectorState['status'], extra?: Partial<ConnectorState>): void {
     this.state = { ...this.state, status, ...extra };
     this.emit('status_change', this.state);
+  }
+
+  connect(): Promise<void> {
+    return this.start();
+  }
+
+  disconnect(): void {
+    this.stop();
   }
 
   async start(): Promise<void> {
@@ -52,7 +70,8 @@ export class RedditConnector {
     this.updateStatus('idle');
   }
 
-  getState(): ConnectorState { return { ...this.state }; }
+  getStatus(): ConnectorState { return { ...this.state }; }
+  getState(): ConnectorState { return this.getStatus(); }
 
   private async poll(): Promise<void> {
     try {

@@ -8,10 +8,11 @@ import {
   Sparkles, 
   Command,
   ShieldCheck,
-  FolderHeart
+  FolderHeart,
+  Radio
 } from 'lucide-react';
 
-export type WorkflowStage = 'import' | 'analyze' | 'replay' | 'compare' | 'export';
+export type WorkflowStage = 'live' | 'import' | 'analyze' | 'replay' | 'compare' | 'export';
 
 interface WorkflowBarProps {
   currentStage: WorkflowStage;
@@ -37,6 +38,13 @@ export const WorkflowBar: React.FC<WorkflowBarProps> = ({
     subtitle: string;
     icon: React.ReactNode;
   }> = [
+    {
+      id: 'live',
+      number: 0,
+      label: 'Mission Control',
+      subtitle: 'Live Firehose & Alerts',
+      icon: <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />,
+    },
     {
       id: 'import',
       number: 1,

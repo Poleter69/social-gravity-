@@ -1,5 +1,5 @@
 /**
- * Social Gravity - Society Subsystem Test Suite Runner
+ * Social Gravity - Society Subsystem & Intelligence Evolution Test Suite Runner
  */
 
 import { testPRNG } from './society/random.test';
@@ -35,6 +35,18 @@ import { testContinuousEvaluator } from './validation/continuousEvaluator.test';
 import { testInterventionOptimizer } from './optimization/interventionOptimizer.test';
 import { testDomainRegistry } from './domains/domainRegistry.test';
 import { testPublicationPipeline } from './research/publicationPipeline.test';
+
+// V3 Evolution Protocol Test Suites (Milestones M10–M19)
+import { testTemporalGraphForecasting } from './forecasting/temporalGraphForecast.test';
+import { testNarrativeEvolution } from './narrative/narrativeEngine.test';
+import { testMultiModalIntelligence } from './multimodal/multimodal.test';
+import { testAnalystAssistant } from './assistant/analystCopilot.test';
+import { testAdaptiveOptimizer } from './optimization/adaptiveOptimizer.test';
+import { testCrossDomainFusion } from './fusion/crossDomainFusion.test';
+import { testScientificValidation } from './research/scientificValidation.test';
+import { testEnterpriseOperations } from './enterprise/enterprise.test';
+import { testLiveNarrativeIntelligence } from './live/liveIntelligence.test';
+import { runLivePerformanceBenchmarks } from './live/livePerformance.benchmark.ts';
 
 console.log('========================================================');
 console.log('  SOCIAL GRAVITY - MASTER SYSTEM TEST SUITE');
@@ -104,7 +116,41 @@ async function run() {
     testPublicationPipeline();
 
     console.log('\n========================================================');
-    console.log('  ALL SOCIETY, PSYCHOLOGY, SIMULATION, AI, GRAPH & PRODUCTION TESTS PASSED (100%)');
+    console.log('  SOCIAL GRAVITY V3.0: RESEARCH & INTELLIGENCE EVOLUTION');
+    console.log('========================================================\n');
+
+    console.log('--- Milestone M10: Temporal Graph Neural Forecasting ---');
+    testTemporalGraphForecasting();
+
+    console.log('--- Milestone M11: Narrative Evolution Engine ---');
+    testNarrativeEvolution();
+
+    console.log('--- Milestone M12: Multi-Modal Intelligence ---');
+    testMultiModalIntelligence();
+
+    console.log('--- Milestone M13: Autonomous Analyst Assistant ---');
+    testAnalystAssistant();
+
+    console.log('--- Milestone M14: Adaptive Intervention Optimizer ---');
+    testAdaptiveOptimizer();
+
+    console.log('--- Milestone M15: Cross-Domain Fusion ---');
+    testCrossDomainFusion();
+
+    console.log('--- Milestone M16: Scientific Validation Program ---');
+    testScientificValidation();
+
+    console.log('--- Milestone M17: Enterprise Operations Layer ---');
+    await testEnterpriseOperations();
+
+    console.log('--- Milestone M19: Live Narrative Intelligence ---');
+    await testLiveNarrativeIntelligence();
+
+    console.log('--- Milestone M19: Operational Performance & Scale Benchmarks ---');
+    await runLivePerformanceBenchmarks();
+
+    console.log('\n========================================================');
+    console.log('  ALL V1, V2, AND V3 EVOLUTION TEST SUITES PASSED (100%)');
     console.log('========================================================');
   } catch (error) {
     console.error('\n❌ Test Suite Failed with error:', error);

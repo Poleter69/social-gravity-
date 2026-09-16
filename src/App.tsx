@@ -52,7 +52,8 @@ import {
   PaletteCommand, 
   NotificationCenter, 
   emitNotification, 
-  useKeyboardShortcuts 
+  useKeyboardShortcuts,
+  MissionControlView
 } from './ui';
 import { societyGenerator } from './society/generators/societyGenerator';
 import { SocietyArchetype, Community } from './society/types/community';
@@ -76,8 +77,8 @@ import { CounterfactualEngine, CounterfactualComparisonResult } from './simulati
 import { TickEngine } from './graph/engine/tickEngine';
 
 export const App: React.FC = () => {
-  // Workflow Stage Navigation
-  const [currentStage, setCurrentStage] = useState<WorkflowStage>('analyze');
+  // Workflow Stage Navigation (Mission Control is default flagship)
+  const [currentStage, setCurrentStage] = useState<WorkflowStage>('live');
   const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
   const [isHeroCollapsed, setIsHeroCollapsed] = useState<boolean>(false);
 
@@ -754,7 +755,19 @@ export const App: React.FC = () => {
       <NotificationCenter />
 
       {/* Main Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+      <main className={`flex-1 w-full ${currentStage === 'live' ? 'p-0 max-w-full' : 'max-w-7xl mx-auto px-6 py-6 space-y-6'}`}>
+        {/* Stage 0: Mission Control (Live Narrative Intelligence) */}
+        {currentStage === 'live' && (
+          <MissionControlView
+            onNavigateToReplay={() => setCurrentStage('replay')}
+            onNavigateToCompare={() => {
+              handleComputeComparison();
+              setCurrentStage('compare');
+            }}
+            onNavigateToExport={() => setCurrentStage('export')}
+          />
+        )}
+
         {/* Stage 1: Import */}
         {currentStage === 'import' && (
           <ImportView

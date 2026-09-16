@@ -1,12 +1,15 @@
-﻿import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler } from './types';
+import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler, LiveConnector } from './types';
 import { DedupStore } from './dedup';
 
-export class BlueskyConnector {
+export class BlueskyConnector implements LiveConnector {
+  public readonly id = 'bluesky';
+  public readonly platform = 'bluesky' as const;
   private state: ConnectorState;
   private dedup: DedupStore;
   private ws: WebSocket | null = null;
-  private config: Required<ConnectorConfig>;
+  private config: Required<Pick<ConnectorConfig, 'pollIntervalMs' | 'maxItemsPerPoll' | 'dedupWindowMs' | 'offline'>>;
   private handlers: LiveEventHandler[] = [];
+  private messageHandlers: Array<(post: LivePost) => void> = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 2000;
 
@@ -28,8 +31,15 @@ export class BlueskyConnector {
     this.handlers.push(handler);
   }
 
+  onMessage(handler: (post: LivePost) => void): void {
+    this.messageHandlers.push(handler);
+  }
+
   private emit(type: 'post' | 'status_change' | 'error', payload: LivePost | ConnectorState | Error): void {
     this.handlers.forEach(h => h({ type, connector: 'bluesky', payload, timestamp: Date.now() }));
+    if (type === 'post') {
+      this.messageHandlers.forEach(h => h(payload as LivePost));
+    }
   }
 
   private updateStatus(status: ConnectorState['status'], extra?: Partial<ConnectorState>): void {
@@ -37,12 +47,20 @@ export class BlueskyConnector {
     this.emit('status_change', this.state);
   }
 
+  connect(): void {
+    this.start();
+  }
+
+  disconnect(): void {
+    this.stop();
+  }
+
   start(): void {
     if (this.config.offline) {
       this.updateStatus('paused', { errorMessage: 'Offline mode' });
       return;
     }
-    this.connect();
+    this.establishSocket();
   }
 
   stop(): void {
@@ -60,11 +78,15 @@ export class BlueskyConnector {
     this.updateStatus('idle');
   }
 
-  getState(): ConnectorState {
+  getStatus(): ConnectorState {
     return { ...this.state };
   }
 
-  private connect(): void {
+  getState(): ConnectorState {
+    return this.getStatus();
+  }
+
+  private establishSocket(): void {
     if (typeof WebSocket === 'undefined') {
       this.updateStatus('error', { errorMessage: 'WebSocket is not supported in current environment' });
       return;

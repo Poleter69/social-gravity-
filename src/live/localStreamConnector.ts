@@ -1,10 +1,13 @@
-﻿import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler } from './types';
+import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler, LiveConnector } from './types';
 import { DedupStore } from './dedup';
 
-export class LocalStreamConnector {
+export class LocalStreamConnector implements LiveConnector {
+  public readonly id = 'local';
+  public readonly platform = 'local' as const;
   private state: ConnectorState;
   private dedup: DedupStore;
   private handlers: LiveEventHandler[] = [];
+  private messageHandlers: Array<(post: LivePost) => void> = [];
 
   constructor(private config?: Partial<ConnectorConfig>) {
     this.dedup = new DedupStore(this.config?.dedupWindowMs ?? 3_600_000);
@@ -15,8 +18,15 @@ export class LocalStreamConnector {
     this.handlers.push(handler);
   }
 
+  onMessage(handler: (post: LivePost) => void): void {
+    this.messageHandlers.push(handler);
+  }
+
   private emit(type: 'post' | 'status_change' | 'error', payload: LivePost | ConnectorState | Error): void {
     this.handlers.forEach(h => h({ type, connector: 'local', payload, timestamp: Date.now() }));
+    if (type === 'post') {
+      this.messageHandlers.forEach(h => h(payload as LivePost));
+    }
   }
 
   private updateStatus(status: ConnectorState['status'], extra?: Partial<ConnectorState>): void {
@@ -24,8 +34,20 @@ export class LocalStreamConnector {
     this.emit('status_change', this.state);
   }
 
-  getState(): ConnectorState {
+  connect(): void {
+    this.updateStatus('live', { lastPollAt: Date.now() });
+  }
+
+  disconnect(): void {
+    this.updateStatus('idle');
+  }
+
+  getStatus(): ConnectorState {
     return { ...this.state };
+  }
+
+  getState(): ConnectorState {
+    return this.getStatus();
   }
 
   /**

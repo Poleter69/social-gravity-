@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "SocialGravity",
-    "version": "2.0.0-beta"
+    "version": "3.0.0-beta"
   },
   "tauri": {
     "allowlist": {

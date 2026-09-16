@@ -9,3 +9,4 @@ export * from './AdvancedAnalysisDrawer';
 export * from './CompareStrategiesView';
 export * from './ReportCenterView';
 export * from './ImportView';
+export * from './MissionControlView';
