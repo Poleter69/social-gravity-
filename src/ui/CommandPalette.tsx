@@ -9,7 +9,7 @@ import { Search } from "lucide-react";
 export interface PaletteCommand {
   id: string;
   title: string;
-  category: "Simulation" | "Navigation" | "Export" | "Scenarios" | "Datasets";
+  category: "Simulation" | "Navigation" | "Export" | "Scenarios" | "Datasets" | "Help" | "Verification";
   icon: React.ReactNode;
   shortcut?: string;
   action: () => void;

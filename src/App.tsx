@@ -1,45 +1,59 @@
 /**
  * Social Gravity - Computational Social Psychology Laboratory UI
- * Interactive workspace for synthesizing societies, loading empirical benchmarks (SNAP),
- * simulating epidemiological rumor diffusion, and evaluating debunking interventions.
+ * 
+ * Redesigned for v2.0.0-beta Product Design Sprint:
+ * 5-Stage Guided Workflow: Import -> Analyze -> Replay -> Compare -> Export
+ * Palantir Foundry × Arc Browser × Notion aesthetic.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Activity, 
   ShieldCheck, 
   Network, 
-  Check, 
-  Copy,
-  Building2,
-  GraduationCap,
-  Briefcase,
-  Globe2,
-  Search,
-  Play,
-  Pause,
-  RotateCcw,
-  FastForward,
-  Flame,
-  ShieldAlert,
-  Database,
-  Radio,
-  Zap,
-  Sparkles,
-  GitFork,
-  History,
-  Heart,
-  FolderHeart,
-  Download,
-  Command
+  Search, 
+  Play, 
+  Pause, 
+  RotateCcw, 
+  FastForward, 
+  ShieldAlert, 
+  Database, 
+  Sparkles, 
+  GitFork, 
+  History, 
+  FolderHeart, 
+  Download, 
+  Users, 
+  Layers 
 } from 'lucide-react';
-import { DiscoveryEngine, DiscoveryReport, DiscoveryDashboard, AnalystReplayDashboard, EmotionalIntelligenceDashboard } from './discovery';
+import { 
+  DiscoveryEngine, 
+  DiscoveryReport, 
+  DiscoveryDashboard, 
+  AnalystReplayDashboard, 
+  EmotionalIntelligenceDashboard 
+} from './discovery';
 import { ExportModal } from './exports/components/ExportModal';
 import { ScenarioModal } from './scenarios/components/ScenarioModal';
 import { Scenario } from './scenarios/types';
 import { ExplainabilityModal } from './explainability/components/ExplainabilityModal';
 import { alertExplainer, AlertExplanation } from './explainability';
-import { CommandPalette, PaletteCommand, NotificationCenter, emitNotification, useKeyboardShortcuts } from './ui';
+import { 
+  WorkflowBar, 
+  WorkflowStage, 
+  HeroSection, 
+  GuidedTour, 
+  MetricCard, 
+  AdvancedAnalysisDrawer, 
+  CompareStrategiesView, 
+  ReportCenterView, 
+  ImportView, 
+  CommandPalette, 
+  PaletteCommand, 
+  NotificationCenter, 
+  emitNotification, 
+  useKeyboardShortcuts 
+} from './ui';
 import { societyGenerator } from './society/generators/societyGenerator';
 import { SocietyArchetype, Community } from './society/types/community';
 import { Society } from './society/types/society';
@@ -55,13 +69,21 @@ import { WikipediaHoaxAdapter } from './datasets/adapters/wikipediaHoaxAdapter';
 import { WIKIPEDIA_HOAX_FIXTURES } from './datasets/fixtures/wikipediaHoaxFixture';
 import { WikipediaHoaxRecord } from './datasets/types';
 import { RealDatasetModal } from './datasets/components/RealDatasetModal';
-import { LoadedDatasetResult } from './datasets/realDatasetService';
+import { RealDatasetService, LoadedDatasetResult } from './datasets/realDatasetService';
 import { TimelineScrubber } from './simulation/components/TimelineScrubber';
 import { CounterfactualModal } from './simulation/components/CounterfactualModal';
 import { CounterfactualEngine, CounterfactualComparisonResult } from './simulation/counterfactualEngine';
 import { TickEngine } from './graph/engine/tickEngine';
 
 export const App: React.FC = () => {
+  // Workflow Stage Navigation
+  const [currentStage, setCurrentStage] = useState<WorkflowStage>('analyze');
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
+  const [isHeroCollapsed, setIsHeroCollapsed] = useState<boolean>(false);
+
+  // Sub-tabs within Analyze stage
+  const [analyzeSubTab, setAnalyzeSubTab] = useState<'topology' | 'communities' | 'agents' | 'discovery' | 'json'>('topology');
+
   // Synthesis parameters
   const [archetype, setArchetype] = useState<SocietyArchetype>('school');
   const [population, setPopulation] = useState<number>(100);
@@ -71,12 +93,9 @@ export const App: React.FC = () => {
   const [riskToleranceBias, setRiskToleranceBias] = useState<number>(0.50);
 
   // UI state
-  const [copied, setCopied] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'topology' | 'replay' | 'emotion' | 'communities' | 'agents' | 'telemetry' | 'discovery' | 'json'>('topology');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [agentSearch, setAgentSearch] = useState<string>('');
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
-  const [sidebarMode, setSidebarMode] = useState<'simulation' | 'generator'>('simulation');
 
   // Real Dataset Ingestion & V2 State
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState<boolean>(false);
@@ -86,7 +105,7 @@ export const App: React.FC = () => {
   // Counterfactual & Replay State
   const [isCounterfactualOpen, setIsCounterfactualOpen] = useState<boolean>(false);
   const [counterfactualResult, setCounterfactualResult] = useState<CounterfactualComparisonResult | null>(null);
-  const wasPlayingBeforeDrag = React.useRef<boolean>(false);
+  const wasPlayingBeforeDrag = useRef<boolean>(false);
 
   // Phase E: Modals & Analyst Tools State
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
@@ -142,6 +161,12 @@ export const App: React.FC = () => {
     setV2LoadedData(result);
     setSelectedAgent(null);
     handleResetSimulation();
+    emitNotification({
+      title: 'Dataset Ingested',
+      message: `Successfully loaded ${result.society.name} with ${result.society.agents.length} nodes.`,
+      type: 'success',
+      autoClose: 4000,
+    });
   };
 
   // Simulation Controls
@@ -173,7 +198,6 @@ export const App: React.FC = () => {
 
     const initial = newEngine.start(rumorSignal, seedIds);
 
-    // Wire Dynamic Graph Engine (Task 4: Edge Dynamics & Temporal Decay)
     newEngine.onTransmission = (sourceId, targetId) => {
       if (v2LoadedData?.dynamicGraph) {
         try {
@@ -220,7 +244,17 @@ export const App: React.FC = () => {
     setSimState({ ...next });
   };
 
-  // --- REPLAY & TIME-TRAVEL HANDLERS (Task 1 & 2) ---
+  const handleResetSimulation = () => {
+    if (engine) {
+      engine.reset();
+    }
+    setEngine(null);
+    setSimState(null);
+    setIsPlaying(false);
+    setDiscoveryReport(null);
+  };
+
+  // Replay & Time-Travel Handlers
   const handleScrubToRound = (round: number) => {
     if (!engine) return;
     try {
@@ -257,13 +291,27 @@ export const App: React.FC = () => {
     handleScrubToRound(engine.getMaxRecordedRound());
   };
 
-  // --- COUNTERFACTUAL BRANCHING HANDLERS (Task 3) ---
+  // Counterfactual Comparison Handlers
   const handleLaunchCounterfactual = () => {
     if (!engine || !simState) return;
     setIsPlaying(false);
     const result = CounterfactualEngine.runStandardComparison(engine, 8);
     setCounterfactualResult(result);
     setIsCounterfactualOpen(true);
+  };
+
+  const handleComputeComparison = () => {
+    if (!engine || !simState) {
+      handleStartSimulation();
+    }
+    const targetEngine = engine || new RumorEngine(activeSociety, { maxRounds: 40 });
+    if (!engine) {
+      const rumorSignal = WikipediaHoaxAdapter.toSignal(selectedHoax, activeSociety.agents[0].id, 0);
+      targetEngine.start(rumorSignal, [activeSociety.agents[0].id]);
+      setEngine(targetEngine);
+    }
+    const result = CounterfactualEngine.runStandardComparison(targetEngine, 8);
+    setCounterfactualResult(result);
   };
 
   const handleApplyCounterfactualBranch = (branchId: string) => {
@@ -280,6 +328,11 @@ export const App: React.FC = () => {
       );
       const next = engine.injectDebunking(debunkSignal, targets);
       setSimState({ ...next });
+      emitNotification({
+        title: 'Bridge Strategy Applied',
+        message: `Inoculated ${targets.length} critical network bridges.`,
+        type: 'success',
+      });
     } else if (branchId === 'influencer_containment') {
       const influencerCandidates = [...activeSociety.agents]
         .filter(a => a.isInfluencer && simState.agentStates.get(a.id) !== 'BELIEVER')
@@ -293,10 +346,60 @@ export const App: React.FC = () => {
       );
       const next = engine.injectDebunking(debunkSignal, influencerCandidates);
       setSimState({ ...next });
+      emitNotification({
+        title: 'Influencer Strategy Applied',
+        message: `Deployed high-salience debunk to ${influencerCandidates.length} influencers.`,
+        type: 'success',
+      });
     }
   };
 
-  // --- PHASE E: ANALYST WORKFLOW & INVESTIGATION HANDLERS ---
+  const handleInjectDebunk = () => {
+    if (!engine || !simState) return;
+    const debunkSignal = WikipediaHoaxAdapter.createDebunkingSignal(
+      selectedHoax,
+      'fact_checker_authority',
+      simState.currentRound
+    );
+    const next = engine.injectDebunking(debunkSignal);
+    setSimState({ ...next });
+    emitNotification({
+      title: 'Fact-Check Injected',
+      message: 'Broadcasting counter-narrative signal to active network.',
+      type: 'success',
+    });
+  };
+
+  // Run AI Discovery
+  const handleRunDiscovery = async (preferOllama: boolean = true) => {
+    setIsAnalyzing(true);
+    try {
+      const defaultSimState: SimulationState = simState || {
+        status: 'idle',
+        currentRound: 0,
+        activeRumor: null,
+        activeDebunk: null,
+        patientZeroIds: [],
+        agentStates: new Map(),
+        infectionParents: new Map(),
+        telemetryHistory: [],
+        recentTransmissions: [],
+      };
+      const report = await DiscoveryEngine.analyze(activeSociety, defaultSimState, { preferOllama });
+      setDiscoveryReport(report);
+      emitNotification({
+        title: 'AI Discovery Complete',
+        message: `Generated ${report.hypothesisCards.length} systemic insights & recommendations.`,
+        type: 'info',
+      });
+    } catch (err) {
+      console.error('Discovery Engine analysis failed:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Scenario Loading
   const handleLoadScenario = (scenario: Scenario) => {
     setActiveSociety(scenario.society);
     if (scenario.rumor) {
@@ -308,8 +411,20 @@ export const App: React.FC = () => {
     }
     setDiscoveryReport(scenario.discoveryReport);
     setIsPlaying(false);
+    emitNotification({
+      title: 'Scenario Loaded',
+      message: `Active investigation: ${scenario.metadata.title}`,
+      type: 'success',
+    });
   };
 
+  // Invariant Audit
+  const handleRunValidation = () => {
+    const report = SocietyValidator.validate(activeSociety);
+    setValidationReport(report);
+  };
+
+  // Epidemic Threat Alert Causal Explanation
   const handleOpenAlertExplanation = (title: string) => {
     if (!simState) return;
     const exp = alertExplainer.explain(
@@ -323,6 +438,140 @@ export const App: React.FC = () => {
     setIsExplainabilityOpen(true);
   };
 
+  // JSON Copy
+  const handleCopyJSON = () => {
+    const jsonStr = societyGenerator.exportJSON(activeSociety);
+    navigator.clipboard.writeText(jsonStr);
+    emitNotification({
+      title: 'JSON Copied',
+      message: 'Network topology copied to system clipboard.',
+      type: 'export',
+    });
+  };
+
+  // 30-Second Guided Tour Automated Handlers
+  const handleTourLoadDemo = async () => {
+    try {
+      const res = await RealDatasetService.loadPreconfiguredDataset('reddit_tech');
+      setActiveSociety(res.society);
+      setV2LoadedData(res);
+      handleResetSimulation();
+    } catch (err) {
+      console.error('Tour failed to load Reddit fixture:', err);
+    }
+  };
+
+  const handleTourStartSim = () => {
+    setCurrentStage('analyze');
+    handleStartSimulation();
+    setIsPlaying(true);
+  };
+
+  const handleTourPauseAtRound12 = () => {
+    if (engine) {
+      while (engine.getState().currentRound < 12 && engine.getState().status === 'running') {
+        engine.step();
+      }
+      setSimState({ ...engine.getState() });
+      setIsPlaying(false);
+    }
+  };
+
+  const handleTourOpenCompare = () => {
+    handleComputeComparison();
+    setCurrentStage('compare');
+  };
+
+  const handleTourOpenExport = () => {
+    setCurrentStage('export');
+  };
+
+  // Run Demo Helper for Hero
+  const handleRunHeroDemo = () => {
+    handleTourLoadDemo();
+    setTimeout(() => {
+      setCurrentStage('analyze');
+      handleStartSimulation();
+      setIsPlaying(true);
+    }, 400);
+  };
+
+  // Playback timer interval
+  useEffect(() => {
+    if (!isPlaying || !engine) return;
+
+    const interval = setInterval(() => {
+      const next = engine.step();
+      setSimState({ ...next });
+      if (next.status === 'completed') {
+        setIsPlaying(false);
+      }
+    }, simSpeedMs);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, engine, simSpeedMs]);
+
+  // Global Keyboard Shortcuts
+  useKeyboardShortcuts([
+    {
+      key: '1',
+      description: 'Navigate to Import Stage',
+      action: () => setCurrentStage('import'),
+    },
+    {
+      key: '2',
+      description: 'Navigate to Analyze Stage',
+      action: () => setCurrentStage('analyze'),
+    },
+    {
+      key: '3',
+      description: 'Navigate to Replay Stage',
+      action: () => setCurrentStage('replay'),
+    },
+    {
+      key: '4',
+      description: 'Navigate to Compare Stage',
+      action: () => {
+        handleComputeComparison();
+        setCurrentStage('compare');
+      },
+    },
+    {
+      key: '5',
+      description: 'Navigate to Export Stage',
+      action: () => setCurrentStage('export'),
+    },
+    {
+      key: ' ',
+      description: 'Play/Pause simulation',
+      action: () => handleTogglePlay(),
+    },
+    {
+      key: 'ArrowRight',
+      description: 'Step forward (+1 round)',
+      action: () => handleStepSimulation(),
+    },
+    {
+      key: 'e',
+      ctrl: true,
+      description: 'Open Export Modal',
+      action: () => setIsExportModalOpen(true),
+    },
+    {
+      key: 's',
+      ctrl: true,
+      description: 'Open Scenarios Catalog',
+      action: () => setIsScenarioModalOpen(true),
+    },
+    {
+      key: 'k',
+      ctrl: true,
+      description: 'Open Command Palette',
+      action: () => setIsCommandPaletteOpen(true),
+    },
+  ]);
+
+  // Palette Commands
   const paletteCommands: PaletteCommand[] = [
     {
       id: 'play-pause',
@@ -341,6 +590,56 @@ export const App: React.FC = () => {
       action: () => handleStepSimulation(),
     },
     {
+      id: 'stage-import',
+      title: 'Workflow: Stage 1 - Import Datasets',
+      category: 'Navigation',
+      icon: <Database className="w-4 h-4 text-cyan-400" />,
+      shortcut: '1',
+      action: () => setCurrentStage('import'),
+    },
+    {
+      id: 'stage-analyze',
+      title: 'Workflow: Stage 2 - Analyze Live Network',
+      category: 'Navigation',
+      icon: <Activity className="w-4 h-4 text-emerald-400" />,
+      shortcut: '2',
+      action: () => setCurrentStage('analyze'),
+    },
+    {
+      id: 'stage-replay',
+      title: 'Workflow: Stage 3 - Replay & Heatmaps',
+      category: 'Navigation',
+      icon: <History className="w-4 h-4 text-purple-400" />,
+      shortcut: '3',
+      action: () => setCurrentStage('replay'),
+    },
+    {
+      id: 'stage-compare',
+      title: 'Workflow: Stage 4 - Compare Strategies',
+      category: 'Navigation',
+      icon: <GitFork className="w-4 h-4 text-indigo-400" />,
+      shortcut: '4',
+      action: () => {
+        handleComputeComparison();
+        setCurrentStage('compare');
+      },
+    },
+    {
+      id: 'stage-export',
+      title: 'Workflow: Stage 5 - Export Intelligence',
+      category: 'Navigation',
+      icon: <Download className="w-4 h-4 text-amber-400" />,
+      shortcut: '5',
+      action: () => setCurrentStage('export'),
+    },
+    {
+      id: 'start-tour',
+      title: 'Start 30-Second Guided Tour',
+      category: 'Help',
+      icon: <Sparkles className="w-4 h-4 text-amber-400" />,
+      action: () => setIsTourOpen(true),
+    },
+    {
       id: 'reset-sim',
       title: 'Reset Simulation to Round 0',
       category: 'Simulation',
@@ -348,8 +647,8 @@ export const App: React.FC = () => {
       action: () => handleResetSimulation(),
     },
     {
-      id: 'open-export',
-      title: 'Open Analyst Report Center (PDF, CSV, JSON)',
+      id: 'open-export-modal',
+      title: 'Open Export Briefing Modal',
       category: 'Export',
       icon: <Download className="w-4 h-4 text-purple-400" />,
       shortcut: 'Ctrl+E',
@@ -357,7 +656,7 @@ export const App: React.FC = () => {
     },
     {
       id: 'open-scenarios',
-      title: 'Open Scenario Investigations Catalog',
+      title: 'Open Scenario Catalog',
       category: 'Scenarios',
       icon: <FolderHeart className="w-4 h-4 text-blue-400" />,
       shortcut: 'Ctrl+S',
@@ -365,164 +664,69 @@ export const App: React.FC = () => {
     },
     {
       id: 'open-datasets',
-      title: 'Load Real Dataset (Reddit / Facebook SNAP)',
+      title: 'Load Empirical Benchmark Dataset',
       category: 'Datasets',
       icon: <Database className="w-4 h-4 text-emerald-400" />,
       action: () => setIsDatasetModalOpen(true),
     },
     {
-      id: 'counterfactual',
-      title: 'Open Counterfactual Branching Sandbox',
-      category: 'Simulation',
-      icon: <GitFork className="w-4 h-4 text-purple-400" />,
-      action: () => handleLaunchCounterfactual(),
-    },
-    {
-      id: 'tab-topology',
-      title: 'Navigate to Topology Canvas',
-      category: 'Navigation',
-      icon: <Network className="w-4 h-4 text-cyan-400" />,
-      action: () => setActiveTab('topology'),
-    },
-    {
-      id: 'tab-replay',
-      title: 'Navigate to Analyst Replay Dashboard',
-      category: 'Navigation',
-      icon: <History className="w-4 h-4 text-purple-400" />,
-      action: () => setActiveTab('replay'),
-    },
-    {
-      id: 'tab-emotion',
-      title: 'Navigate to Emotional Intelligence Heatmap',
-      category: 'Navigation',
-      icon: <Heart className="w-4 h-4 text-pink-400" />,
-      action: () => setActiveTab('emotion'),
-    },
-    {
-      id: 'tab-discovery',
-      title: 'Navigate to AI Discovery Intelligence',
-      category: 'Navigation',
-      icon: <Sparkles className="w-4 h-4 text-emerald-400" />,
-      action: () => setActiveTab('discovery'),
+      id: 'audit-invariants',
+      title: 'Audit Invariants & Determinism',
+      category: 'Verification',
+      icon: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
+      action: () => handleRunValidation(),
     },
     {
       id: 'explain-alert',
-      title: 'Explain Epidemic Threat Alert',
+      title: 'Explain Threat Progression Alert',
       category: 'Simulation',
       icon: <ShieldAlert className="w-4 h-4 text-amber-400" />,
       action: () => handleOpenAlertExplanation('Epidemic Cascade Progression Alert'),
     },
+    {
+      id: 'export-json-cmd',
+      title: 'Export JSON Topology to Clipboard',
+      category: 'Export',
+      icon: <Download className="w-4 h-4 text-cyan-400" />,
+      action: () => handleCopyJSON(),
+    },
+    {
+      id: 're-synthesize',
+      title: 'Synthesize New Random Society',
+      category: 'Simulation',
+      icon: <Sparkles className="w-4 h-4 text-emerald-400" />,
+      action: () => handleGenerate(),
+    },
   ];
 
-  useKeyboardShortcuts([
-    {
-      key: ' ',
-      description: 'Play/Pause simulation',
-      action: () => handleTogglePlay(),
-    },
-    {
-      key: 'ArrowRight',
-      description: 'Step forward',
-      action: () => handleStepSimulation(),
-    },
-    {
-      key: 'e',
-      ctrl: true,
-      description: 'Open Export Report Center',
-      action: () => setIsExportModalOpen(true),
-    },
-    {
-      key: 's',
-      ctrl: true,
-      description: 'Open Scenarios Catalog',
-      action: () => setIsScenarioModalOpen(true),
-    },
-    {
-      key: 'k',
-      ctrl: true,
-      description: 'Open Command Palette',
-      action: () => setIsCommandPaletteOpen(true),
-    },
-  ]);
+  // Latest round telemetry
+  const latestTelemetry: RoundTelemetry | null = simState && simState.telemetryHistory.length > 0
+    ? simState.telemetryHistory[simState.telemetryHistory.length - 1]
+    : null;
 
-  const handleResetSimulation = () => {
-    if (engine) {
-      engine.reset();
-    }
-    setEngine(null);
-    setSimState(null);
-    setIsPlaying(false);
-    setDiscoveryReport(null);
-  };
+  // Primary Metrics
+  const totalNodes = activeSociety.summary.totalPopulation;
+  const spreadRate = latestTelemetry ? latestTelemetry.r0 : (simState ? 0 : 1.45);
+  const believerCount = latestTelemetry ? latestTelemetry.believerCount : (simState ? Array.from(simState.agentStates.values()).filter(s => s === 'BELIEVER').length : 0);
+  const believerPercent = totalNodes > 0 ? (believerCount / totalNodes) * 100 : 0;
+  
+  // Risk assessment
+  let riskLevel = 'Low';
+  let riskBadgeVariant: 'neutral' | 'info' | 'warning' | 'critical' | 'success' = 'success';
+  if (!simState) {
+    riskLevel = 'Dormant';
+    riskBadgeVariant = 'neutral';
+  } else if (spreadRate > 1.4 || believerPercent > 35) {
+    riskLevel = 'Critical';
+    riskBadgeVariant = 'critical';
+  } else if (spreadRate > 1.0 || believerPercent > 15) {
+    riskLevel = 'Moderate';
+    riskBadgeVariant = 'warning';
+  }
 
-  const handleInjectDebunk = () => {
-    if (!engine || !simState) return;
-    const debunkSignal = WikipediaHoaxAdapter.createDebunkingSignal(
-      selectedHoax,
-      'fact_checker_authority',
-      simState.currentRound
-    );
-    const next = engine.injectDebunking(debunkSignal);
-    setSimState({ ...next });
-  };
-
-  const handleRunDiscovery = async (preferOllama: boolean = true) => {
-    setIsAnalyzing(true);
-    try {
-      const defaultSimState: SimulationState = simState || {
-        status: 'idle',
-        currentRound: 0,
-        activeRumor: null,
-        activeDebunk: null,
-        patientZeroIds: [],
-        agentStates: new Map(),
-        infectionParents: new Map(),
-        telemetryHistory: [],
-        recentTransmissions: [],
-      };
-      const report = await DiscoveryEngine.analyze(activeSociety, defaultSimState, { preferOllama });
-      setDiscoveryReport(report);
-      setActiveTab('discovery');
-    } catch (err) {
-      console.error('Discovery Engine analysis failed:', err);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // Playback timer interval
-  useEffect(() => {
-    if (!isPlaying || !engine) return;
-
-    const interval = setInterval(() => {
-      const next = engine.step();
-      setSimState({ ...next });
-      if (next.status === 'completed') {
-        setIsPlaying(false);
-      }
-    }, simSpeedMs);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, engine, simSpeedMs]);
-
-  const handleRunValidation = () => {
-    const report = SocietyValidator.validate(activeSociety);
-    setValidationReport(report);
-  };
-
-  const handleCopyJSON = () => {
-    const jsonStr = societyGenerator.exportJSON(activeSociety);
-    navigator.clipboard.writeText(jsonStr);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const archetypeIcons: Record<SocietyArchetype, React.ReactNode> = {
-    school: <GraduationCap className="h-4 w-4" />,
-    workplace: <Briefcase className="h-4 w-4" />,
-    city: <Building2 className="h-4 w-4" />,
-    online_community: <Globe2 className="h-4 w-4" />,
-  };
+  const crossCommunityPercent = v2LoadedData 
+    ? (v2LoadedData.v2Metrics.bridgeRatio * 100).toFixed(1)
+    : ((activeSociety.summary.bridgeNodeCount / (totalNodes || 1)) * 100).toFixed(1);
 
   const filteredAgents = activeSociety.agents.filter(
     (a) =>
@@ -531,343 +735,149 @@ export const App: React.FC = () => {
       a.id.toLowerCase().includes(agentSearch.toLowerCase())
   );
 
-  // Latest round telemetry
-  const latestTelemetry: RoundTelemetry | null = simState && simState.telemetryHistory.length > 0
-    ? simState.telemetryHistory[simState.telemetryHistory.length - 1]
-    : null;
-
   return (
-    <div className="min-h-screen bg-gravity-950 bg-grid-pattern bg-radial-gradient text-slate-100 flex flex-col font-sans">
-      {/* Top Telemetry Navigation */}
-      <header className="border-b border-gravity-800/80 bg-gravity-900/70 backdrop-blur-md px-6 py-3.5 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-400 p-[1px] shadow-glow-cyan">
-            <div className="h-full w-full bg-gravity-950 rounded-[7px] flex items-center justify-center">
-              <Activity className="h-4 w-4 text-cyan-400 animate-pulse" />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-bold tracking-wider text-sm text-white">SOCIAL GRAVITY</span>
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-semibold">
-                v0.4.0-mvp
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 font-mono">Computational Social Psychology & Misinformation Simulator</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-slate-950 bg-grid-pattern text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30">
+      {/* 1. Top Workflow Navigation Bar */}
+      <WorkflowBar
+        currentStage={currentStage}
+        onSelectStage={(stage) => {
+          if (stage === 'compare' && !counterfactualResult) {
+            handleComputeComparison();
+          }
+          setCurrentStage(stage);
+        }}
+        onOpenTour={() => setIsTourOpen(true)}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onOpenScenarios={() => setIsScenarioModalOpen(true)}
+        onAuditInvariants={handleRunValidation}
+      />
+      <NotificationCenter />
 
-        <div className="flex items-center space-x-4 text-xs font-mono">
-          <button
-            onClick={handleRunValidation}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-gravity-800/90 hover:bg-gravity-700 border border-gravity-700 text-slate-300 transition-colors"
-          >
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-            <span>Audit Invariants</span>
-          </button>
-
-          <div className="hidden md:flex items-center space-x-2 text-slate-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
-            <span className="text-emerald-400 font-medium">100% LOCAL DETERMINISTIC</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 space-y-6">
-        {/* Header Hero Banner */}
-        <div className="bg-gravity-900/60 border border-gravity-800 rounded-2xl p-6 backdrop-blur-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 text-xs font-mono mb-2">
-              <Radio className="h-3.5 w-3.5 animate-pulse text-cyan-400" />
-              <span>CORE RESEARCH ENGINE: TRUST VS MISINFORMATION DIFFUSION</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-              Epidemiological Diffusion & Intervention Laboratory
-            </h1>
-            <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Simulate peer-to-peer rumor cascades across synthetic archetypes or Stanford SNAP social circles. 
-              Evaluate how epistemic trust, Asch conformity, and emotional salience drive beliefs.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleLaunchCounterfactual}
-              disabled={!simState || simState.telemetryHistory.length === 0}
-              className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white text-xs font-mono font-bold transition-all shadow-glow-purple disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              title="Launch 3-way counterfactual branching comparison from current tick"
-            >
-              <GitFork className="h-3.5 w-3.5" />
-              <span>Branch Analysis</span>
-            </button>
-            <button
-              onClick={() => handleRunDiscovery(true)}
-              disabled={isAnalyzing}
-              className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-gravity-950 text-xs font-mono font-bold transition-all shadow-glow-cyan cursor-pointer"
-              title="Synthesize empirical discoveries and intervention recommendations"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{isAnalyzing ? 'Analyzing...' : 'Run AI Discovery'}</span>
-            </button>
-            <button
-              onClick={handleCopyJSON}
-              className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-gravity-800 hover:bg-gravity-700 border border-gravity-700 text-xs font-mono text-slate-300 transition-colors"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-slate-400" />}
-              <span>{copied ? 'Copied' : 'Export JSON'}</span>
-            </button>
-            <button
-              onClick={() => setIsCommandPaletteOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-gravity-800 hover:bg-gravity-700 border border-gravity-700 text-xs font-mono text-slate-200 transition-colors"
-              title="Open Analyst Command Palette (Ctrl+K)"
-            >
-              <Command className="h-3.5 w-3.5 text-cyan-400" />
-              <span>Commands</span>
-              <kbd className="text-[9px] px-1 py-0.2 rounded bg-gravity-900 border border-gravity-700 text-slate-400">⌘K</kbd>
-            </button>
-            <button
-              onClick={() => setIsScenarioModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-blue-950/60 hover:bg-blue-900/80 border border-blue-500/50 text-xs font-mono text-blue-300 transition-all shadow-glow-blue cursor-pointer"
-              title="Save, load, and duplicate analyst scenario investigations (Ctrl+S)"
-            >
-              <FolderHeart className="h-3.5 w-3.5 text-blue-400" />
-              <span>Scenarios</span>
-            </button>
-            <button
-              onClick={() => setIsExportModalOpen(true)}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/50 text-xs font-mono text-purple-300 transition-all shadow-glow-purple cursor-pointer"
-              title="Export PDF Briefing, CSV Data Tables, or Replay JSON (Ctrl+E)"
-            >
-              <Download className="h-3.5 w-3.5 text-purple-400" />
-              <span>Reports</span>
-            </button>
-            <button
-              onClick={() => setIsDatasetModalOpen(true)}
-              className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-xs font-mono text-emerald-300 transition-all shadow-glow-emerald cursor-pointer"
-              title="Load real-world Reddit conversation trees or SNAP Facebook ego networks"
-            >
-              <Database className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Load Real Dataset</span>
-            </button>
-            <NotificationCenter />
-          </div>
-        </div>
-
-        {/* Real-World Dataset V2 Intelligence HUD Banner */}
-        {v2LoadedData && (
-          <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono shadow-lg">
-            <div className="flex items-center space-x-2.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-white font-bold">{v2LoadedData.society.name}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-900/70 text-emerald-300 border border-emerald-600">
-                {v2LoadedData.canonicalGraph.sourceDataset}
-              </span>
-            </div>
-            <div className="flex items-center gap-4 text-slate-400 text-[11px]">
-              <span>Modularity Q: <strong className="text-cyan-400">{v2LoadedData.canonicalGraph.modularity.toFixed(3)}</strong></span>
-              <span>Bridge Ratio: <strong className="text-amber-400">{(v2LoadedData.v2Metrics.bridgeRatio * 100).toFixed(1)}%</strong></span>
-              <span>Clustering: <strong className="text-rose-400">{v2LoadedData.v2Metrics.globalClusteringCoefficient.toFixed(3)}</strong></span>
-              <span>Density: <strong className="text-slate-200">{(v2LoadedData.v2Metrics.density * 100).toFixed(2)}%</strong></span>
-              <span>Resilience: <strong className="text-emerald-400">{(v2LoadedData.society.agents.reduce((acc, a) => acc + (a.psychology?.resilience ?? 0.5), 0) / (v2LoadedData.society.agents.length || 1) * 100).toFixed(0)}%</strong></span>
-              <span>Avg Degree: <strong className="text-slate-200">{v2LoadedData.v2Metrics.averageDegree.toFixed(1)}</strong></span>
-              <span>Records: <strong className="text-emerald-400">{v2LoadedData.validationReport.validRecordsCount}</strong></span>
-            </div>
-          </div>
+      {/* Main Workspace */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6 space-y-6">
+        {/* Stage 1: Import */}
+        {currentStage === 'import' && (
+          <ImportView
+            onLoadDataset={handleDatasetLoaded}
+            onGenerateSynthetic={({ archetype: arch, population: pop, influencerRatio: inf }) => {
+              setArchetype(arch);
+              setPopulation(pop);
+              setInfluencerRatio(inf);
+              const generated = societyGenerator.generate({
+                name: `${arch.toUpperCase()} Synthesized Society`,
+                archetype: arch,
+                populationSize: pop,
+                influencerRatio: inf,
+                baselineTrust: trustBias,
+                baselineConformity: conformityBias,
+                baselineRiskTolerance: riskToleranceBias,
+              });
+              setActiveSociety(generated);
+              setV2LoadedData(null);
+              setSelectedAgent(null);
+              handleResetSimulation();
+            }}
+            onProceedToAnalyze={() => setCurrentStage('analyze')}
+            activeSociety={activeSociety}
+            v2LoadedData={v2LoadedData}
+          />
         )}
 
-        {/* Dynamic Telemetry HUD Banner (Switches between Society Summary and Live Epidemic Telemetry) */}
-        {latestTelemetry ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="bg-gravity-900/90 border border-red-500/40 rounded-xl p-3.5 shadow-glow-red">
-              <span className="text-red-400 text-[10px] font-mono uppercase block flex items-center gap-1">
-                <Flame className="h-3 w-3" /> Believers (Infected)
-              </span>
-              <span className="text-xl font-bold font-mono text-red-400 mt-0.5 block">
-                {latestTelemetry.believerCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {((latestTelemetry.believerCount / activeSociety.summary.totalPopulation) * 100).toFixed(1)}% of population
-              </span>
+        {/* Stage 2: Analyze (Mission Control) */}
+        {currentStage === 'analyze' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Landing Hero Section */}
+            <HeroSection
+              onLoadDataset={() => setCurrentStage('import')}
+              onRunDemo={handleRunHeroDemo}
+              onOpenReport={() => setCurrentStage('export')}
+              isCollapsed={isHeroCollapsed}
+              onToggleCollapse={() => setIsHeroCollapsed(!isHeroCollapsed)}
+            />
+
+            {/* Stage 7: Primary Metric Cards HUD */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <MetricCard
+                label="Spread Rate"
+                technicalLabel="R₀(t)"
+                value={spreadRate.toFixed(2)}
+                subtitle={spreadRate > 1 ? 'Supercritical cascade' : spreadRate === 0 ? 'Extinguished' : 'Subcritical decline'}
+                badge={spreadRate > 1 ? 'Growing' : 'Stable'}
+                badgeVariant={spreadRate > 1 ? 'critical' : spreadRate === 0 ? 'neutral' : 'success'}
+              />
+              <MetricCard
+                label="Total Nodes"
+                technicalLabel="|V| Society Population"
+                value={totalNodes}
+                subtitle={`${activeSociety.summary.communityCount} communities active`}
+                badge="Informed"
+                badgeVariant="info"
+              />
+              <MetricCard
+                label="Risk Level"
+                technicalLabel="Exposure Severity"
+                value={riskLevel}
+                subtitle={`${believerPercent.toFixed(1)}% infected (${believerCount} nodes)`}
+                badge={riskLevel.toUpperCase()}
+                badgeVariant={riskBadgeVariant}
+              />
+              <MetricCard
+                label="Cross-Community Activity"
+                technicalLabel="Bridge Ratio"
+                value={`${crossCommunityPercent}%`}
+                subtitle={`${activeSociety.summary.bridgeNodeCount} bridge nodes`}
+                badge="Inter-Cluster"
+                badgeVariant="info"
+              />
             </div>
 
-            <div className="bg-gravity-900/90 border border-emerald-500/40 rounded-xl p-3.5">
-              <span className="text-emerald-400 text-[10px] font-mono uppercase block flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3" /> Debunkers (Verified)
-              </span>
-              <span className="text-xl font-bold font-mono text-emerald-400 mt-0.5 block">
-                {latestTelemetry.debunkerCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {((latestTelemetry.debunkerCount / activeSociety.summary.totalPopulation) * 100).toFixed(1)}% fact-checked
-              </span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-purple-500/30 rounded-xl p-3.5">
-              <span className="text-purple-400 text-[10px] font-mono uppercase block">Skeptics (Resistant)</span>
-              <span className="text-xl font-bold font-mono text-purple-400 mt-0.5 block">
-                {latestTelemetry.skepticCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">Refused adoption</span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-cyan-500/30 rounded-xl p-3.5">
-              <span className="text-cyan-400 text-[10px] font-mono uppercase block">Susceptible</span>
-              <span className="text-xl font-bold font-mono text-cyan-400 mt-0.5 block">
-                {latestTelemetry.susceptibleCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">Unreached nodes</span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-amber-500/30 rounded-xl p-3.5">
-              <span className="text-amber-400 text-[10px] font-mono uppercase block flex items-center gap-1">
-                <Zap className="h-3 w-3" /> Repro Rate R₀(t)
-              </span>
-              <span className="text-xl font-bold font-mono text-amber-400 mt-0.5 block">
-                {latestTelemetry.r0}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {latestTelemetry.r0 > 1 ? 'Epidemic growing' : latestTelemetry.r0 === 0 ? 'Extinguished' : 'Dying out'}
-              </span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-3.5">
-              <span className="text-slate-400 text-[10px] font-mono uppercase block">Round / Depth</span>
-              <span className="text-xl font-bold font-mono text-white mt-0.5 block">
-                t={latestTelemetry.round} <span className="text-xs font-normal text-slate-500">/ d={latestTelemetry.maxCascadeDepth}</span>
-              </span>
-              <span className="text-[10px] text-cyan-400 font-mono">
-                Velocity: {latestTelemetry.cascadeVelocity} / rnd
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-3.5">
-              <span className="text-slate-500 text-[10px] font-mono uppercase block">Population</span>
-              <span className="text-xl font-bold font-mono text-white mt-0.5 block">
-                {activeSociety.summary.totalPopulation}
-              </span>
-              <span className="text-[10px] text-cyan-400 font-mono">
-                {activeSociety.summary.communityCount} Sub-groups
-              </span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-3.5">
-              <span className="text-slate-500 text-[10px] font-mono uppercase block">Influencers</span>
-              <span className="text-xl font-bold font-mono text-amber-400 mt-0.5 block">
-                {activeSociety.summary.influencerCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {((activeSociety.summary.influencerCount / activeSociety.summary.totalPopulation) * 100).toFixed(1)}% Reach
-              </span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-3.5">
-              <span className="text-slate-500 text-[10px] font-mono uppercase block">Bridges</span>
-              <span className="text-xl font-bold font-mono text-cyan-400 mt-0.5 block">
-                {activeSociety.summary.bridgeNodeCount}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">Cross-community</span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-3.5">
-              <span className="text-slate-500 text-[10px] font-mono uppercase block">Avg Trust</span>
-              <span className="text-xl font-bold font-mono text-emerald-400 mt-0.5 block">
-                {(activeSociety.summary.avgTrust * 100).toFixed(0)}%
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">Epistemic prior</span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-3.5">
-              <span className="text-slate-500 text-[10px] font-mono uppercase block">Conformity</span>
-              <span className="text-xl font-bold font-mono text-amber-300 mt-0.5 block">
-                {(activeSociety.summary.avgConformity * 100).toFixed(0)}%
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">Asch pressure</span>
-            </div>
-
-            <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-3.5">
-              <span className="text-slate-500 text-[10px] font-mono uppercase block">Clustering</span>
-              <span className="text-xl font-bold font-mono text-rose-400 mt-0.5 block">
-                {activeSociety.summary.globalClustering}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">Density {(activeSociety.summary.density * 100).toFixed(1)}%</span>
-            </div>
-          </div>
-        )}
-
-        {/* Two-Column Grid: Config Controls & Visualization */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Controls Form (4 Cols) */}
-          <div className="lg:col-span-4 bg-gravity-900/80 border border-gravity-800 rounded-xl p-5 space-y-5 backdrop-blur-sm">
-            {/* Sidebar Mode Toggle */}
-            <div className="grid grid-cols-2 gap-1 bg-gravity-950 p-1 rounded-lg border border-gravity-800 text-xs font-mono">
-              <button
-                onClick={() => setSidebarMode('simulation')}
-                className={`py-1.5 px-2 rounded font-semibold transition-all ${
-                  sidebarMode === 'simulation'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Diffusion Simulator
-              </button>
-              <button
-                onClick={() => setSidebarMode('generator')}
-                className={`py-1.5 px-2 rounded font-semibold transition-all ${
-                  sidebarMode === 'generator'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Society Generator
-              </button>
-            </div>
-
-            {sidebarMode === 'simulation' ? (
-              <div className="space-y-4">
-                {/* Simulation Playback Deck */}
-                <div className="bg-gravity-950/70 border border-gravity-800 rounded-lg p-3.5 space-y-3">
+            {/* Mission Control 2-Column Deck: Quick Actions & Canvas */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Simulation Controls, Signals, Actions (4 Cols) */}
+              <div className="lg:col-span-4 bg-slate-900/70 border border-slate-800/80 rounded-2xl p-5 space-y-5 backdrop-blur-md">
+                {/* Playback Control Bar */}
+                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400 uppercase font-semibold">Playback Controls</span>
+                    <span className="text-slate-400 font-bold uppercase tracking-wider">Simulation Control</span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       simState?.status === 'running' 
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse'
+                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse'
                         : simState?.status === 'completed'
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-gravity-800 text-slate-400'
+                          : 'bg-slate-800 text-slate-400'
                     }`}>
-                      {simState?.status ? simState.status.toUpperCase() : 'IDLE'}
+                      {simState?.status ? simState.status.toUpperCase() : 'READY'}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={handleTogglePlay}
-                      className={`flex items-center justify-center space-x-1.5 py-2 px-3 rounded-lg text-xs font-mono font-bold transition-all ${
+                      className={`flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                         isPlaying
-                          ? 'bg-amber-500 hover:bg-amber-400 text-gravity-950 shadow-glow-amber'
-                          : 'bg-cyan-500 hover:bg-cyan-400 text-gravity-950 shadow-glow-cyan'
+                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-glow-amber'
+                          : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-glow-cyan'
                       }`}
                     >
-                      {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       <span>{isPlaying ? 'Pause' : 'Play'}</span>
                     </button>
 
                     <button
                       onClick={handleStepSimulation}
-                      className="flex items-center justify-center space-x-1 py-2 px-2.5 rounded-lg bg-gravity-800 hover:bg-gravity-700 border border-gravity-700 text-xs font-mono text-slate-200 transition-colors"
+                      className="flex items-center justify-center space-x-1 py-2.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-mono text-slate-200 transition-colors cursor-pointer"
+                      title="Step forward by 1 round (→)"
                     >
-                      <FastForward className="h-3.5 w-3.5 text-cyan-400" />
+                      <FastForward className="h-4 w-4 text-cyan-400" />
                       <span>Step +1</span>
                     </button>
 
                     <button
                       onClick={handleResetSimulation}
-                      className="flex items-center justify-center space-x-1 py-2 px-2.5 rounded-lg bg-gravity-800 hover:bg-gravity-700 border border-gravity-700 text-xs font-mono text-slate-400 hover:text-white transition-colors"
+                      className="flex items-center justify-center space-x-1 py-2.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-mono text-slate-400 hover:text-white transition-colors cursor-pointer"
+                      title="Reset simulation to round 0"
                     >
-                      <RotateCcw className="h-3.5 w-3.5" />
+                      <RotateCcw className="h-4 w-4" />
                       <span>Reset</span>
                     </button>
                   </div>
@@ -875,7 +885,7 @@ export const App: React.FC = () => {
                   {/* Speed Slider */}
                   <div className="space-y-1 pt-1">
                     <div className="flex justify-between text-[11px] font-mono text-slate-400">
-                      <span>Simulation Step Delay</span>
+                      <span>Step Latency</span>
                       <span className="text-cyan-400 font-bold">{simSpeedMs}ms</span>
                     </div>
                     <input
@@ -885,33 +895,21 @@ export const App: React.FC = () => {
                       step={50}
                       value={simSpeedMs}
                       onChange={(e) => setSimSpeedMs(Number(e.target.value))}
-                      className="w-full accent-cyan-400 bg-gravity-900 h-1.5 rounded-lg appearance-none cursor-pointer"
+                      className="w-full accent-cyan-400 bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer"
                     />
-                  </div>
-
-                  {/* Dynamic Graph Edge Decay Toggle (Task 4) */}
-                  <div className="pt-2 border-t border-gravity-800 flex items-center justify-between text-[11px] font-mono">
-                    <span className="text-slate-400">Dynamic Edge Decay (V2)</span>
-                    <button
-                      onClick={() => setLiveDynamicDecay(!liveDynamicDecay)}
-                      className={`px-2 py-0.5 rounded font-bold text-[10px] transition-all cursor-pointer ${
-                        liveDynamicDecay
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/50'
-                          : 'bg-gravity-900 text-slate-500 border border-gravity-800'
-                      }`}
-                    >
-                      {liveDynamicDecay ? 'ENABLED' : 'DISABLED'}
-                    </button>
                   </div>
                 </div>
 
-                {/* Hoax Signal Selector (Wikipedia Empirical Fixtures) */}
+                {/* Hoax Signal Selector (Wikipedia Fixtures) */}
                 <div className="space-y-2">
-                  <label className="text-xs font-mono text-slate-400 flex items-center gap-1.5">
-                    <Database className="h-3.5 w-3.5 text-cyan-400" />
-                    <span>Misinformation Signal (Wikipedia Hoax Corpus)</span>
+                  <label className="text-xs font-mono text-slate-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-bold uppercase text-slate-300">
+                      <Database className="h-3.5 w-3.5 text-cyan-400" />
+                      <span>Misinformation Signal</span>
+                    </span>
+                    <span className="text-[10px] text-slate-500">Wikipedia Corpus</span>
                   </label>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     {WIKIPEDIA_HOAX_FIXTURES.map((hoax) => (
                       <button
                         key={hoax.id}
@@ -919,17 +917,17 @@ export const App: React.FC = () => {
                           setSelectedHoax(hoax);
                           if (engine) handleResetSimulation();
                         }}
-                        className={`w-full text-left p-2.5 rounded-lg border text-xs font-mono transition-all ${
+                        className={`w-full text-left p-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer ${
                           selectedHoax.id === hoax.id
                             ? 'bg-cyan-950/50 border-cyan-500/80 text-cyan-200 shadow-glow-cyan'
-                            : 'bg-gravity-950/60 border-gravity-800 text-slate-400 hover:border-gravity-700'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                         }`}
                       >
                         <div className="font-bold truncate text-white">{hoax.title}</div>
                         <div className="text-[10px] text-slate-400 mt-0.5 flex justify-between">
                           <span>Fear: {(hoax.fearSalience * 100).toFixed(0)}%</span>
                           <span>Plausibility: {(hoax.plausibility * 100).toFixed(0)}%</span>
-                          <span className="text-red-400">Veracity: {hoax.veracity}</span>
+                          <span className="text-rose-400 font-bold">Veracity: {hoax.veracity}</span>
                         </div>
                       </button>
                     ))}
@@ -938,522 +936,373 @@ export const App: React.FC = () => {
 
                 {/* Patient Zero Seeding Strategy */}
                 <div className="space-y-2">
-                  <label className="text-xs font-mono text-slate-400">Patient Zero Inoculation</label>
+                  <label className="text-xs font-mono text-slate-400 font-bold uppercase text-slate-300">
+                    First Source (Patient Zero)
+                  </label>
                   <div className="grid grid-cols-3 gap-1.5 text-[11px] font-mono">
                     <button
                       onClick={() => setSeedStrategy('influencer')}
-                      className={`p-2 rounded border transition-all ${
+                      className={`p-2 rounded-lg border transition-all cursor-pointer ${
                         seedStrategy === 'influencer'
                           ? 'bg-amber-950/60 border-amber-500 text-amber-300'
-                          : 'bg-gravity-950/60 border-gravity-800 text-slate-400 hover:text-white'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
                       Top Influencer
                     </button>
                     <button
                       onClick={() => setSeedStrategy('bridge')}
-                      className={`p-2 rounded border transition-all ${
+                      className={`p-2 rounded-lg border transition-all cursor-pointer ${
                         seedStrategy === 'bridge'
                           ? 'bg-cyan-950/60 border-cyan-500 text-cyan-300'
-                          : 'bg-gravity-950/60 border-gravity-800 text-slate-400 hover:text-white'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
                       Bridge Node
                     </button>
                     <button
                       onClick={() => setSeedStrategy('selected')}
-                      className={`p-2 rounded border transition-all ${
+                      className={`p-2 rounded-lg border transition-all cursor-pointer truncate ${
                         seedStrategy === 'selected'
                           ? 'bg-rose-950/60 border-rose-500 text-rose-300'
-                          : 'bg-gravity-950/60 border-gravity-800 text-slate-400 hover:text-white'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >
-                      {selectedAgent ? selectedAgent.id : 'Click Node'}
+                      {selectedAgent ? selectedAgent.id : 'Selected Node'}
                     </button>
                   </div>
                 </div>
 
-                {/* Intervention Button */}
-                <div className="pt-2 border-t border-gravity-800">
+                {/* Primary Fact-Check Intervention Action */}
+                <div className="pt-2 border-t border-slate-800 space-y-2">
                   <button
                     onClick={handleInjectDebunk}
                     disabled={!simState || simState.status !== 'running'}
-                    className={`w-full py-2.5 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center space-x-2 transition-all ${
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-mono font-bold flex items-center justify-center space-x-2 transition-all ${
                       simState && simState.status === 'running'
-                        ? 'bg-emerald-500 hover:bg-emerald-400 text-gravity-950 shadow-glow-emerald cursor-pointer'
-                        : 'bg-gravity-800 text-slate-500 cursor-not-allowed border border-gravity-700'
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-glow-emerald cursor-pointer'
+                        : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                     }`}
                   >
                     <ShieldAlert className="h-4 w-4" />
                     <span>Deploy Fact-Check Intervention</span>
                   </button>
-                  <p className="text-[10px] text-slate-500 font-mono mt-1 text-center">
-                    Tests whether high-trust communities halt the rumor vs low-trust polarization.
-                  </p>
+
+                  <button
+                    onClick={() => {
+                      handleComputeComparison();
+                      setCurrentStage('compare');
+                    }}
+                    className="w-full py-2 px-3 rounded-xl text-xs font-mono font-bold flex items-center justify-center space-x-2 bg-purple-950/60 hover:bg-purple-900 border border-purple-500/50 text-purple-300 transition-all cursor-pointer"
+                  >
+                    <GitFork className="h-3.5 w-3.5 text-purple-400" />
+                    <span>Compare Intervention Strategies</span>
+                  </button>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Archetype Selector */}
-                <div className="space-y-2">
-                  <label className="text-xs font-mono text-slate-400">Society Archetype</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['school', 'workplace', 'city', 'online_community'] as SocietyArchetype[]).map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => setArchetype(type)}
-                        className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-mono transition-all border ${
-                          archetype === type
-                            ? 'bg-cyan-950/40 border-cyan-500 text-cyan-300 shadow-glow-cyan'
-                            : 'bg-gravity-950/60 border-gravity-800 text-slate-400 hover:border-gravity-700'
-                        }`}
-                      >
-                        {archetypeIcons[type]}
-                        <span className="capitalize">{type.replace('_', ' ')}</span>
-                      </button>
-                    ))}
-                  </div>
+
+              {/* Right Column: Interactive Canvas & Timeline (8 Cols) */}
+              <div className="lg:col-span-8 space-y-4">
+                {/* Sub-tab switcher */}
+                <div className="flex border-b border-slate-800 bg-slate-900/60 rounded-t-xl px-3 pt-2 text-xs font-mono">
+                  <button
+                    onClick={() => setAnalyzeSubTab('topology')}
+                    className={`px-3.5 py-2 border-b-2 font-medium transition-colors flex items-center space-x-1.5 cursor-pointer ${
+                      analyzeSubTab === 'topology'
+                        ? 'border-cyan-400 text-cyan-300'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Network className="h-3.5 w-3.5" />
+                    <span>Live Network Canvas</span>
+                  </button>
+                  <button
+                    onClick={() => setAnalyzeSubTab('communities')}
+                    className={`px-3.5 py-2 border-b-2 font-medium transition-colors flex items-center space-x-1.5 cursor-pointer ${
+                      analyzeSubTab === 'communities'
+                        ? 'border-cyan-400 text-cyan-300'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    <span>Communities ({activeSociety.communities.length})</span>
+                  </button>
+                  <button
+                    onClick={() => setAnalyzeSubTab('agents')}
+                    className={`px-3.5 py-2 border-b-2 font-medium transition-colors flex items-center space-x-1.5 cursor-pointer ${
+                      analyzeSubTab === 'agents'
+                        ? 'border-cyan-400 text-cyan-300'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Node Roster ({activeSociety.agents.length})</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAnalyzeSubTab('discovery');
+                      if (!discoveryReport && !isAnalyzing) {
+                        handleRunDiscovery(true);
+                      }
+                    }}
+                    className={`px-3.5 py-2 border-b-2 font-medium transition-colors flex items-center space-x-1.5 cursor-pointer ${
+                      analyzeSubTab === 'discovery'
+                        ? 'border-cyan-400 text-cyan-300'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                    <span>AI Discovery {discoveryReport ? '✓' : ''}</span>
+                  </button>
                 </div>
 
-                {/* Population Size Slider */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-slate-400">Population Size (N)</span>
-                    <span className="text-cyan-400 font-bold">{population} Agents</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={30}
-                    max={500}
-                    step={10}
-                    value={population}
-                    onChange={(e) => setPopulation(Number(e.target.value))}
-                    className="w-full accent-cyan-400 bg-gravity-950 h-1.5 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                {/* Influencer Ratio */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-slate-400">Influencer Hub Ratio</span>
-                    <span className="text-amber-400 font-bold">{(influencerRatio * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.01}
-                    max={0.15}
-                    step={0.01}
-                    value={influencerRatio}
-                    onChange={(e) => setInfluencerRatio(Number(e.target.value))}
-                    className="w-full accent-amber-400 bg-gravity-950 h-1.5 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                {/* Trait Calibration Sliders */}
-                <div className="space-y-3 pt-2 border-t border-gravity-800">
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-slate-400">Baseline Epistemic Trust</span>
-                      <span className="text-emerald-400 font-bold">{(trustBias * 100).toFixed(0)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.1}
-                      max={0.95}
-                      step={0.05}
-                      value={trustBias}
-                      onChange={(e) => setTrustBias(Number(e.target.value))}
-                      className="w-full accent-emerald-400 bg-gravity-950 h-1.5 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-slate-400">Conformity Pressure (Asch)</span>
-                      <span className="text-amber-400 font-bold">{(conformityBias * 100).toFixed(0)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.1}
-                      max={0.95}
-                      step={0.05}
-                      value={conformityBias}
-                      onChange={(e) => setConformityBias(Number(e.target.value))}
-                      className="w-full accent-amber-400 bg-gravity-950 h-1.5 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs font-mono">
-                      <span className="text-slate-400">Risk Tolerance</span>
-                      <span className="text-rose-400 font-bold">{(riskToleranceBias * 100).toFixed(0)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.1}
-                      max={0.95}
-                      step={0.05}
-                      value={riskToleranceBias}
-                      onChange={(e) => setRiskToleranceBias(Number(e.target.value))}
-                      className="w-full accent-rose-400 bg-gravity-950 h-1.5 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleGenerate}
-                  className="w-full py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gravity-950 font-bold text-xs font-mono transition-all shadow-glow-cyan"
-                >
-                  Synthesize Digital Society
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Right Main Panel (8 Cols): Visualization & Inspector */}
-          <div className="lg:col-span-8 space-y-4">
-            {/* View Mode Selector Tabs */}
-            <div className="flex border-b border-gravity-800 bg-gravity-900/60 rounded-t-xl px-4 pt-2">
-              <button
-                onClick={() => setActiveTab('topology')}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors flex items-center space-x-1.5 ${
-                  activeTab === 'topology'
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Network className="h-3.5 w-3.5" />
-                <span>Simulation Topology Canvas</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('replay')}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors flex items-center space-x-1.5 ${
-                  activeTab === 'replay'
-                    ? 'border-purple-400 text-purple-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <History className="h-3.5 w-3.5 text-purple-400" />
-                <span>Analyst Replay ({simState ? simState.telemetryHistory.length : 0})</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('emotion')}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors flex items-center space-x-1.5 ${
-                  activeTab === 'emotion'
-                    ? 'border-pink-400 text-pink-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Heart className="h-3.5 w-3.5 text-pink-400" />
-                <span>Emotional Intelligence</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('communities')}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors ${
-                  activeTab === 'communities'
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Sub-Communities ({activeSociety.communities.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('agents')}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors ${
-                  activeTab === 'agents'
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Agent Roster ({activeSociety.agents.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('telemetry')}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors ${
-                  activeTab === 'telemetry'
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Epidemic Telemetry ({simState ? simState.telemetryHistory.length : 0})
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('discovery');
-                  if (!discoveryReport && !isAnalyzing) {
-                    handleRunDiscovery(true);
-                  }
-                }}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors flex items-center space-x-1.5 ${
-                  activeTab === 'discovery'
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-                <span>AI Discovery & Policy {discoveryReport ? '✓' : ''}</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('json')}
-                className={`px-4 py-2 text-xs font-mono border-b-2 font-medium transition-colors ${
-                  activeTab === 'json'
-                    ? 'border-cyan-400 text-cyan-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                JSON Protocol
-              </button>
-            </div>
-
-            {/* Tab Body */}
-            <div>
-              {activeTab === 'topology' && (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <div className={selectedAgent ? 'md:col-span-7' : 'md:col-span-12'}>
-                    <NetworkCanvas
-                      society={activeSociety}
-                      selectedAgent={selectedAgent}
-                      onSelectAgent={(agent) => setSelectedAgent(agent)}
-                      simulationStates={simState?.agentStates}
-                      patientZeroIds={simState?.patientZeroIds}
-                      recentTransmissions={simState?.recentTransmissions}
-                    />
-
-                    {/* Timeline Scrubber Component (Task 1 & 2) */}
-                    <div className="mt-3">
-                      <TimelineScrubber
-                        currentRound={simState ? simState.currentRound : 0}
-                        maxRecordedRound={engine ? engine.getMaxRecordedRound() : 0}
-                        isPlaying={isPlaying}
-                        telemetryHistory={simState ? simState.telemetryHistory : []}
-                        onScrub={handleScrubToRound}
-                        onTogglePlay={handleTogglePlay}
-                        onStepForward={handleStepForward}
-                        onStepBackward={handleStepBackward}
-                        onJumpToStart={handleJumpToStart}
-                        onJumpToEnd={handleJumpToEnd}
-                        onDragStart={() => {
-                          wasPlayingBeforeDrag.current = isPlaying;
-                          setIsPlaying(false);
-                        }}
-                        onDragEnd={() => {
-                          if (wasPlayingBeforeDrag.current) {
-                            setIsPlaying(true);
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 text-[11px] font-mono text-slate-500 text-center">
-                      Tip: Click any node to open its cognitive dossier, or drag timeline slider to replay historical cascade progression.
-                    </div>
-                  </div>
-
-                  {selectedAgent && (
-                    <div className="md:col-span-5">
-                      <AgentInspector
-                        agent={selectedAgent}
+                {/* Sub-tab view body */}
+                {analyzeSubTab === 'topology' && (
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className={selectedAgent ? 'md:col-span-7' : 'md:col-span-12'}>
+                      <NetworkCanvas
                         society={activeSociety}
-                        onClose={() => setSelectedAgent(null)}
-                        onSelectNeighbor={(neighborId) => {
-                          const neighbor = activeSociety.agents.find((a) => a.id === neighborId);
-                          if (neighbor) setSelectedAgent(neighbor);
-                        }}
-                        onAgentUpdated={(updated) => {
-                          setSelectedAgent(updated);
-                          setActiveSociety({ ...activeSociety });
-                        }}
+                        selectedAgent={selectedAgent}
+                        onSelectAgent={(agent) => setSelectedAgent(agent)}
+                        simulationStates={simState?.agentStates}
+                        patientZeroIds={simState?.patientZeroIds}
+                        recentTransmissions={simState?.recentTransmissions}
                       />
+
+                      {/* Timeline Scrubber */}
+                      <div className="mt-3">
+                        <TimelineScrubber
+                          currentRound={simState ? simState.currentRound : 0}
+                          maxRecordedRound={engine ? engine.getMaxRecordedRound() : 0}
+                          isPlaying={isPlaying}
+                          telemetryHistory={simState ? simState.telemetryHistory : []}
+                          onScrub={handleScrubToRound}
+                          onTogglePlay={handleTogglePlay}
+                          onStepForward={handleStepForward}
+                          onStepBackward={handleStepBackward}
+                          onJumpToStart={handleJumpToStart}
+                          onJumpToEnd={handleJumpToEnd}
+                          onDragStart={() => {
+                            wasPlayingBeforeDrag.current = isPlaying;
+                            setIsPlaying(false);
+                          }}
+                          onDragEnd={() => {
+                            if (wasPlayingBeforeDrag.current) {
+                              setIsPlaying(true);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="mt-2 text-[11px] font-mono text-slate-500 text-center">
+                        Tip: Click any node to open its cognitive dossier, or drag timeline slider to scrub propagation.
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
 
-              {/* Analyst Replay Center (Task 6) */}
-              {activeTab === 'replay' && (
-                <AnalystReplayDashboard
-                  simState={simState}
-                  society={activeSociety}
-                  currentRound={simState ? simState.currentRound : 0}
-                  maxRecordedRound={engine ? engine.getMaxRecordedRound() : 0}
-                  onLaunchCounterfactual={handleLaunchCounterfactual}
-                  onScrubToRound={handleScrubToRound}
-                />
-              )}
+                    {selectedAgent && (
+                      <div className="md:col-span-5">
+                        <AgentInspector
+                          agent={selectedAgent}
+                          society={activeSociety}
+                          onClose={() => setSelectedAgent(null)}
+                          onSelectNeighbor={(neighborId) => {
+                            const neighbor = activeSociety.agents.find((a) => a.id === neighborId);
+                            if (neighbor) setSelectedAgent(neighbor);
+                          }}
+                          onAgentUpdated={(updated) => {
+                            setSelectedAgent(updated);
+                            setActiveSociety({ ...activeSociety });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {activeTab === 'communities' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {activeSociety.communities.map((comm: Community) => (
-                    <div
-                      key={comm.id}
-                      className="bg-gravity-900/80 border border-gravity-800/80 rounded-xl p-4 space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span
-                            className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: comm.color }}
-                          />
-                          <span className="font-mono text-xs font-bold text-white">
-                            {comm.name}
+                {analyzeSubTab === 'communities' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeSociety.communities.map((comm: Community) => (
+                      <div
+                        key={comm.id}
+                        className="bg-slate-900/80 border border-slate-800/80 rounded-xl p-4 space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: comm.color }}
+                            />
+                            <span className="font-mono text-xs font-bold text-white">
+                              {comm.name}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                            {comm.agentIds.length} Members
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gravity-800 text-slate-300">
-                          {comm.agentIds.length} Members
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-400">{comm.metadata.description}</p>
-                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-400 pt-2 border-t border-gravity-800/60">
-                        <div>Avg Trust: {(comm.metrics.avgTrust * 100).toFixed(0)}%</div>
-                        <div>Avg Influence: {(comm.metrics.avgInfluence * 100).toFixed(0)}%</div>
-                        <div>Conformity: {(comm.metrics.avgConformity * 100).toFixed(0)}%</div>
-                        <div>Internal Density: {(comm.metrics.internalDensity * 100).toFixed(0)}%</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === 'agents' && (
-                <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-4 space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Search agents by name, ID, or structural role..."
-                      value={agentSearch}
-                      onChange={(e) => setAgentSearch(e.target.value)}
-                      className="w-full bg-gravity-950 border border-gravity-800 rounded-lg pl-9 pr-4 py-2 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    />
-                  </div>
-
-                  <div className="max-h-[460px] overflow-y-auto space-y-2 pr-1 font-mono text-xs">
-                    {filteredAgents.map((agent) => (
-                      <div
-                        key={agent.id}
-                        onClick={() => setSelectedAgent(agent)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between ${
-                          selectedAgent?.id === agent.id
-                            ? 'bg-cyan-950/40 border-cyan-500/80 shadow-glow-cyan'
-                            : 'bg-gravity-950/60 border-gravity-800/80 hover:border-gravity-700'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-bold text-slate-100">{agent.name}</span>
-                            <span className="text-[10px] text-slate-500">({agent.id})</span>
-                            {agent.isInfluencer && (
-                              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
-                                INFLUENCER
-                              </span>
-                            )}
-                            {agent.isBridge && (
-                              <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold">
-                                BRIDGE
-                              </span>
-                            )}
-                            {simState?.agentStates.get(agent.id) && (
-                              <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                                simState.agentStates.get(agent.id) === 'BELIEVER'
-                                  ? 'bg-red-500/20 text-red-400 border border-red-500/40'
-                                  : simState.agentStates.get(agent.id) === 'DEBUNKER'
-                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                                    : 'bg-purple-500/20 text-purple-400'
-                              }`}>
-                                {simState.agentStates.get(agent.id)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-slate-400">{agent.role}</div>
-                        </div>
-
-                        <div className="text-right text-[10px] text-slate-400 space-y-0.5">
-                          <div>Trust: {(agent.traits.trust * 100).toFixed(0)}%</div>
-                          <div>Influence: {(agent.traits.influence * 100).toFixed(0)}%</div>
-                          <div>Connections: {agent.connections.length}</div>
+                        <p className="text-xs text-slate-400">{comm.metadata.description}</p>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/60">
+                          <div>Avg Trust: {(comm.metrics.avgTrust * 100).toFixed(0)}%</div>
+                          <div>Avg Influence: {(comm.metrics.avgInfluence * 100).toFixed(0)}%</div>
+                          <div>Conformity: {(comm.metrics.avgConformity * 100).toFixed(0)}%</div>
+                          <div>Internal Density: {(comm.metrics.internalDensity * 100).toFixed(0)}%</div>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
 
-              {activeTab === 'telemetry' && (
-                <div className="bg-gravity-900/80 border border-gravity-800 rounded-xl p-4 space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-gravity-800">
-                    <span className="font-mono text-xs font-bold text-white uppercase">
-                      Discrete Round Telemetry History
-                    </span>
-                    <span className="text-xs font-mono text-cyan-400">
-                      {simState ? `${simState.telemetryHistory.length} Rounds Logged` : 'No Active Simulation'}
-                    </span>
+                {analyzeSubTab === 'agents' && (
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search agents by name, ID, or structural role..."
+                        value={agentSearch}
+                        onChange={(e) => setAgentSearch(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    <div className="max-h-[460px] overflow-y-auto space-y-2 pr-1 font-mono text-xs">
+                      {filteredAgents.map((agent) => (
+                        <div
+                          key={agent.id}
+                          onClick={() => setSelectedAgent(agent)}
+                          className={`p-3 rounded-lg border transition-all cursor-pointer flex items-center justify-between ${
+                            selectedAgent?.id === agent.id
+                              ? 'bg-cyan-950/40 border-cyan-500/80 shadow-glow-cyan'
+                              : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-bold text-slate-100">{agent.name}</span>
+                              <span className="text-[10px] text-slate-500">({agent.id})</span>
+                              {agent.isInfluencer && (
+                                <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                                  INFLUENCER
+                                </span>
+                              )}
+                              {agent.isBridge && (
+                                <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold">
+                                  BRIDGE
+                                </span>
+                              )}
+                              {simState?.agentStates.get(agent.id) && (
+                                <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                  simState.agentStates.get(agent.id) === 'BELIEVER'
+                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                                    : simState.agentStates.get(agent.id) === 'DEBUNKER'
+                                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                                      : 'bg-purple-500/20 text-purple-400'
+                                }`}>
+                                  {simState.agentStates.get(agent.id)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400">{agent.role}</div>
+                          </div>
+
+                          <div className="text-right text-[10px] text-slate-400 space-y-0.5">
+                            <div>Trust: {(agent.traits.trust * 100).toFixed(0)}%</div>
+                            <div>Influence: {(agent.traits.influence * 100).toFixed(0)}%</div>
+                            <div>Connections: {agent.connections.length}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                )}
 
-                  {simState && simState.telemetryHistory.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left font-mono text-xs">
-                        <thead>
-                          <tr className="border-b border-gravity-800 text-slate-400">
-                            <th className="py-2 px-3">Round</th>
-                            <th className="py-2 px-3 text-red-400">Believers</th>
-                            <th className="py-2 px-3 text-emerald-400">Debunkers</th>
-                            <th className="py-2 px-3 text-purple-400">Skeptics</th>
-                            <th className="py-2 px-3 text-cyan-400">Susceptible</th>
-                            <th className="py-2 px-3 text-amber-400">R₀</th>
-                            <th className="py-2 px-3">Velocity</th>
-                            <th className="py-2 px-3">Max Depth</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gravity-800/60 text-slate-300">
-                          {simState.telemetryHistory.map((t) => (
-                            <tr key={t.round} className="hover:bg-gravity-800/40">
-                              <td className="py-2 px-3 font-bold text-white">t={t.round}</td>
-                              <td className="py-2 px-3 text-red-400 font-semibold">{t.believerCount}</td>
-                              <td className="py-2 px-3 text-emerald-400 font-semibold">{t.debunkerCount}</td>
-                              <td className="py-2 px-3 text-purple-400">{t.skepticCount}</td>
-                              <td className="py-2 px-3 text-cyan-400">{t.susceptibleCount}</td>
-                              <td className="py-2 px-3 text-amber-400 font-bold">{t.r0}</td>
-                              <td className="py-2 px-3">+{t.cascadeVelocity}</td>
-                              <td className="py-2 px-3">{t.maxCascadeDepth} hops</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center text-xs font-mono text-slate-500">
-                      No simulation rounds executed yet. Click &quot;Play&quot; or &quot;Step +1&quot; in the Diffusion Simulator to begin propagation.
-                    </div>
-                  )}
-                </div>
-              )}
+                {analyzeSubTab === 'discovery' && (
+                  <DiscoveryDashboard
+                    report={discoveryReport}
+                    isAnalyzing={isAnalyzing}
+                    onRunAnalysis={handleRunDiscovery}
+                  />
+                )}
+              </div>
+            </div>
 
-              {activeTab === 'discovery' && (
-                <DiscoveryDashboard
-                  report={discoveryReport}
-                  isAnalyzing={isAnalyzing}
-                  onRunAnalysis={handleRunDiscovery}
-                />
-              )}
+            {/* Stage 5: Progressive Disclosure - Collapsible Advanced Analysis Drawer */}
+            <AdvancedAnalysisDrawer
+              society={activeSociety}
+              v2LoadedData={v2LoadedData}
+              simState={simState}
+              liveDynamicDecay={liveDynamicDecay}
+              onToggleDynamicDecay={() => setLiveDynamicDecay(!liveDynamicDecay)}
+              trustBias={trustBias}
+              onTrustBiasChange={setTrustBias}
+              conformityBias={conformityBias}
+              onConformityBiasChange={setConformityBias}
+              riskToleranceBias={riskToleranceBias}
+              onRiskToleranceBiasChange={setRiskToleranceBias}
+              onOpenValidationModal={handleRunValidation}
+            />
+          </div>
+        )}
 
-              {activeTab === 'emotion' && (
-                <EmotionalIntelligenceDashboard
-                  society={activeSociety}
-                  simState={simState}
-                  telemetry={discoveryReport?.telemetry}
-                />
-              )}
+        {/* Stage 3: Replay */}
+        {currentStage === 'replay' && (
+          <div className="space-y-6 animate-fade-in">
+            <AnalystReplayDashboard
+              simState={simState}
+              society={activeSociety}
+              currentRound={simState ? simState.currentRound : 0}
+              maxRecordedRound={engine ? engine.getMaxRecordedRound() : 0}
+              onLaunchCounterfactual={handleLaunchCounterfactual}
+              onScrubToRound={handleScrubToRound}
+            />
 
-              {activeTab === 'json' && (
-                <div className="bg-gravity-950 border border-gravity-800 rounded-xl p-4 overflow-x-auto max-h-[500px]">
-                  <pre className="font-mono text-xs text-cyan-300">
-                    {societyGenerator.exportJSON(activeSociety)}
-                  </pre>
-                </div>
-              )}
+            {/* GoEmotions Emotional Heatmap */}
+            <div className="mt-6">
+              <EmotionalIntelligenceDashboard
+                society={activeSociety}
+                simState={simState}
+                telemetry={discoveryReport?.telemetry}
+              />
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Stage 4: Compare Strategies */}
+        {currentStage === 'compare' && (
+          <CompareStrategiesView
+            comparisonResult={counterfactualResult}
+            currentRound={simState ? simState.currentRound : 0}
+            onRunComparison={handleComputeComparison}
+            onApplyBranch={(branchId) => {
+              handleApplyCounterfactualBranch(branchId);
+              setCurrentStage('analyze');
+            }}
+            onSwitchToAnalyze={() => setCurrentStage('analyze')}
+          />
+        )}
+
+        {/* Stage 5: Export Intelligence */}
+        {currentStage === 'export' && (
+          <ReportCenterView
+            society={activeSociety}
+            simState={simState}
+            telemetryHistory={simState ? simState.telemetryHistory : []}
+            discoveryReport={discoveryReport}
+            onNotify={(n) => emitNotification({ ...n, autoClose: 5000 })}
+          />
+        )}
       </main>
+
+      {/* 30-Second Guided First-Run Tour */}
+      <GuidedTour
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onLoadDemoDataset={handleTourLoadDemo}
+        onStartSimulation={handleTourStartSim}
+        onPauseAtRound12={handleTourPauseAtRound12}
+        onOpenCompare={handleTourOpenCompare}
+        onOpenExport={handleTourOpenExport}
+        currentRound={simState ? simState.currentRound : 0}
+      />
 
       {/* Invariant Validation Modal */}
       {validationReport && (
@@ -1470,7 +1319,7 @@ export const App: React.FC = () => {
         onDatasetLoaded={handleDatasetLoaded}
       />
 
-      {/* Counterfactual Branching Matrix Modal (Task 3) */}
+      {/* Counterfactual Branching Matrix Modal */}
       <CounterfactualModal
         isOpen={isCounterfactualOpen}
         onClose={() => setIsCounterfactualOpen(false)}

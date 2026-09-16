@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Social Gravity - Keyboard Shortcuts Hook
  * Registers global keyboard shortcuts for analyst workflows.
  */
@@ -22,8 +22,8 @@ export function useKeyboardShortcuts(shortcuts: ShortcutAction[]): void {
 
       for (const s of shortcuts) {
         const keyMatch = e.key.toLowerCase() === s.key.toLowerCase() || e.code === s.key;
-        const ctrlMatch = s.ctrl ? (e.ctrlKey || e.metaKey) : true;
-        const shiftMatch = s.shift ? e.shiftKey : true;
+        const ctrlMatch = s.ctrl ? (e.ctrlKey || e.metaKey) : (!e.ctrlKey && !e.metaKey);
+        const shiftMatch = s.shift ? e.shiftKey : !e.shiftKey;
         if (keyMatch && ctrlMatch && shiftMatch) {
           e.preventDefault();
           s.action();
