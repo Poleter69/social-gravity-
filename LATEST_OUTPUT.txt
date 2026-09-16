@@ -1,0 +1,30 @@
+================================================================================
+SOCIAL GRAVITY — LATEST SYSTEM OUTPUT DOSSIER (v2.0.0-beta)
+================================================================================
+Generated: 2026-09-16
+Current Engine Version: 2.0.0-beta
+Git Commit: 636db65
+Git Tag: v2.0.0-beta
+
+All primary outputs, reports, and benchmarks are saved in the project directory:
+C:\Users\suraj\Pictures\social gravity\
+
+PRIMARY TEXT FILES AVAILABLE:
+1. V2_EVOLUTION_OUTPUT.txt                     <-- Complete output of the V2.0 run
+2. V2_EVOLUTION_MASTER_SUMMARY.txt             <-- Master summary of Milestones M1-M9
+3. V2_BASELINE_VERIFICATION_REPORT.txt         <-- Baseline audit (7/7 gates passed)
+4. V2_M1_FORECAST_ENGINE_REPORT.txt            <-- Milestone M1: Rolling Forecast Engine
+5. V2_M2_GRAPH_LEARNING_REPORT.txt             <-- Milestone M2: Node2Vec Graph Learning
+6. V2_M3_ANALYST_COLLABORATION_REPORT.txt      <-- Milestone M3: Analyst Collaboration Layer
+7. V2_M4_EXPLAINABLE_INTELLIGENCE_REPORT.txt   <-- Milestone M4: Evidence Dossiers
+8. V2_M5_FORECAST_VALIDATION_REPORT.txt        <-- Milestone M5: Holdout Validation
+9. V2_M6_INTERVENTION_OPTIMIZATION_REPORT.txt  <-- Milestone M6: Pareto Optimizer
+10. V2_M7_MULTI_DOMAIN_REPORT.txt              <-- Milestone M7: 5 Domain Adapters
+11. V2_M8_RESEARCH_PUBLICATION_REPORT.txt      <-- Milestone M8: LaTeX & Reproducibility
+12. V2_M9_RELEASE_ENGINEERING_REPORT.txt       <-- Milestone M9: Release Engineering
+13. MIGRATION_GUIDE_v2.0.txt                   <-- Developer migration guide
+14. VALIDATION_AND_RELEASE_SUMMARY.txt         <-- v1.0.0-alpha release summary
+
+For the full detailed output, open:
+C:\Users\suraj\Pictures\social gravity\V2_EVOLUTION_OUTPUT.txt
+================================================================================
