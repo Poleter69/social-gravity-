@@ -2,7 +2,7 @@
   "build": {
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
-    "devPath": "http://localhost:3000",
+    "devPath": "http://localhost:5173",
     "distDir": "../dist"
   },
   "package": {
@@ -48,9 +48,7 @@
         "signingIdentity": null,
         "entitlements": null
       },
-      "resources": [
-        "models/*"
-      ],
+      "resources": [],
       "shortDescription": "Social Gravity Desktop Workstation",
       "targets": "all",
       "windows": {

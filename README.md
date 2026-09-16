@@ -1,45 +1,67 @@
 # Social Gravity
 
-> **Decision Intelligence Operating System for Computational Social Physics & Narrative Risk Forecasting**  
-> *An offline-first, mathematically deterministic research and analyst workstation for predicting belief diffusion, viral contagions, and counterfactual interventions across real-world social networks.*
+> Offline-first Decision Intelligence Operating System for modeling information contagion.
+
+* **Real Reddit/Facebook ingestion** — Stanford SNAP Facebook ego-networks & Reddit conversation tree parsers.
+* **Replay & Counterfactual Simulation** — 100% deterministic SplitMix32 PRNG engine with 3-way branching intervention analysis.
+* **GoEmotions-powered Emotion Intelligence** — Continuous 27-class affective valence & arousal modeling via local ONNX/WASM inference.
+* **Live Connectors** — Streaming intelligence ingestion (Bluesky Firehose, RSS, JSON streams) with sliding-window deduplication.
+* **Tauri Desktop App** — Air-gapped, zero-telemetry native desktop client for Windows, macOS, and Linux.
+
+**Live Demo:** [https://social-gravity.pages.dev](https://social-gravity.pages.dev)  
+**Download Desktop Release:** [GitHub Releases (v2.0.0-beta)](https://github.com/your-org/social-gravity/releases)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6%20(Strict)-blue.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-purple.svg)](https://vitejs.dev/)
 [![Tauri](https://img.shields.io/badge/Tauri-1.x%20(Rust)-orange.svg)](https://tauri.app/)
 [![Tests](https://img.shields.io/badge/Tests-20%2F20%20Passing%20(100%25)-emerald.svg)]()
-[![Validation](https://img.shields.io/badge/Validation-v1.0.0--alpha%20Certified-brightgreen.svg)]()
+[![Validation](https://img.shields.io/badge/Validation-v2.0.0--beta%20Certified-brightgreen.svg)]()
 [![Architecture](https://img.shields.io/badge/Architecture-Offline--First%20%7C%20Zero--Telemetry-amber.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)]()
 
 ---
 
-## 1. Executive Overview
+## 1. Simulation Preview
 
-**Social Gravity** is an intelligence workstation designed for computational social scientists, national security analysts, risk officers, and crisis teams. It replaces classical epidemiological heuristics (e.g. SIR, SEIR) with a **dual-process cognitive decision engine** grounded in behavioral psychology (Asch conformity, risk tolerance, epistemic trust) and continuous affective natural language processing (**Google GoEmotions**).
+```
++----------------------------------------------------------------------------------------------------+
+| SOCIAL GRAVITY WORKSTATION — ROUND 4 [TICK: 4 / HORIZON: 10]                      [STATUS: ACTIVE] |
++----------------------------------------------------------------------------------------------------+
+| Topology: Core-Periphery (1,000 Nodes, 2,792 Edges)          | Reproductive Ratio R0: 1.84 (PEAK)   |
+| Belief Distribution:  [■■■■■■■■░░░░░░░░░░░░] 38.2% Believers | Latency: 10.96 ms / round            |
+| Emotion Driver:       Fear (Valence: -0.72, Arousal: 0.88)   | Containment Efficiency: 82.5%        |
++----------------------------------------------------------------------------------------------------+
+|  [O] Key Opinion Leader (KOL) ====(high-arousal trigger)====> [O] Bridge Broker                     |
+|         |                                                           |                               |
+|         v                                                           v                               |
+|   Cluster A (High Conformity)                                 Cluster B (Low Institutional Trust)   |
+|   Believers: 142/250 (56.8%)                                  Believers: 189/300 (63.0%)            |
+|                                                                                                     |
+|  >>> RECOMMENDED PARETO INTERVENTION: Bridge Inoculation on Agent-0001 & Agent-0015                 |
++----------------------------------------------------------------------------------------------------+
+```
 
-Unlike black-box agent simulations that rely on non-deterministic external cloud LLMs, Social Gravity is **100% deterministic, offline-first, and client-side**:
-- **Zero API Keys & Zero Outbound Telemetry**: Inferences, network physics, and neural classifications execute on-device (WASM/ONNX).
-- **Mathematical Determinism**: PRNG seeds (SplitMix32) guarantee bit-for-bit replayability across platforms and sessions.
-- **Empirically Calibrated**: Evaluated against 50 Monte Carlo simulation runs and 4 documented historical crises (2020 5G-COVID panic, 2023 SVB digital bank run, 2022 AI synthetic extortion, and 2024 voting tabulator rumors).
+> **Live Interactive Preview**: Visit [social-gravity.pages.dev](https://social-gravity.pages.dev) to interact with live force-directed network rendering, real-time emotion telemetry, 3-way counterfactual branching, and instant PDF brief compilation.
 
 ---
 
-## 2. Core Architectural Pillars
+## 2. Architecture Diagram
 
 ```
-+-----------------------------------------------------------------------------------+
-|                            SOCIAL GRAVITY WORKSTATION                             |
-+-----------------------------------------------------------------------------------+
-|  [Ingestion Engine]        [Affective NLP]             [Simulation Core]          |
-|  - SNAP Facebook (4k/88k)  - Google GoEmotions (WASM)  - Dual-Process Decisions   |
-|  - Reddit Tree Parser      - 27-Class Circumplex Map   - SplitMix32 PRNG Determin |
-|  - Live Connectors (BSky)  - Affective Modulation      - Dynamic Edge Decay       |
-+----------------------------+---------------------------+--------------------------+
-|  [Counterfactual Engine]   [Export Center]             [Desktop Sandboxing]       |
-|  - 3-Way Branch Comparison - Printable PDF Briefs      - Tauri (Rust) Scoped I/O  |
-|  - Bridge Inoculation      - Tabular Multi-CSV         - Strict CSP & Zero-Cloud  |
-|  - Rate-Limit Simulation   - Deterministic Replay JSON - Automated Pen Testing    |
-+-----------------------------------------------------------------------------------+
++----------------------------------------------------------------------------------------------------+
+|                                    SOCIAL GRAVITY WORKSTATION                                      |
++----------------------------------------------------------------------------------------------------+
+|  [Ingestion & Adapters]       [Affective NLP (GoEmotions)]    [Simulation & Decision Physics]      |
+|  - Stanford SNAP Facebook     - Google GoEmotions (WASM)      - Dual-Process Cognitive Engine      |
+|  - Reddit Tree Ingestion      - 27-Class Circumplex Map       - SplitMix32 PRNG Determinism        |
+|  - Live Connectors (BSky/RSS) - Continuous Valence & Arousal  - Dynamic Tie Decay & Triadic Closure|
+|  - 5 Multi-Domain Adapters    - 100% In-Memory / Zero Cloud   - Asch Conformity & Risk Tolerance   |
++-------------------------------+-------------------------------+------------------------------------+
+|  [Graph Learning & AI]        [Explainable Dossier Engine]    [Desktop Sandboxing & Packaging]     |
+|  - On-Device Node2Vec (SGNS)  - Causal Chain Reconstruction   - Tauri (Rust) Scoped File Sandbox   |
+|  - Rolling 6-Tick Forecasts   - Brokerage Impact Scoring      - Strict CSP (Zero-Cloud / No CDN)   |
+|  - Continuous Holdout Drift   - Multi-Candidate Pareto Search - Printable PDF & Multi-CSV Exports  |
++----------------------------------------------------------------------------------------------------+
 ```
 
 ### 2.1 Dynamic Graph & Network Physics
@@ -57,20 +79,9 @@ Adoption probability synthesizes fast affective reflex (System 1) and deliberati
 
 ---
 
-## 3. Empirical Benchmarks (v1.0.0-alpha)
+## 3. Performance & Empirical Scaling Table
 
-### 3.1 Predictive Accuracy (50 Monte Carlo Trials)
-| Metric Target | Observed Value | Description |
-|:---|:---:|:---|
-| **Adoption Fraction MAE** | `0.1650` | Mean Absolute Error across all network topologies |
-| **Adoption Fraction RMSE** | `0.2081` | Root Mean Square Error of final adoption fraction |
-| **Peak $R_0$ MAE** | `0.7180` | Reproductive ratio tracking precision |
-| **Peak $R_0$ RMSE** | `0.8370` | Reproductive ratio variance |
-| **Outbreak Recall** | `100.0%` | Zero missed runaway cascades ($R_0 \ge 1.5$, Adoption $\ge 20\%$) |
-| **Brier Calibration Score** | `0.0673` | Quadratic divergence from true probabilistic outcome ($<0.10$ = Exceptional) |
-
-### 3.2 Scaled Performance Benchmarks
-Conducted on Node.js v24.14.1 / V8 on Windows 64-bit:
+Conducted on Node.js v24.14.1 / V8 on Windows 64-bit (100% deterministic):
 
 | Nodes | Edges | Graph Gen (ms) | 5-Tick Sim (ms) | Throughput (ms/tick) | Resident Heap | Replay Compr. % |
 |---:|---:|---:|---:|---:|---:|---:|
@@ -82,9 +93,71 @@ Conducted on Node.js v24.14.1 / V8 on Windows 64-bit:
 
 *1,000-node networks execute in real-time at over 90 rounds/sec; 10,000-node networks remain sub-second per round.*
 
+### Predictive Calibration (50 Monte Carlo Trials)
+| Metric Target | Observed Value | Description |
+|:---|:---:|:---|
+| **Adoption Fraction MAE** | `0.1650` | Mean Absolute Error across all network topologies |
+| **Adoption Fraction RMSE** | `0.2081` | Root Mean Square Error of final adoption fraction |
+| **Peak $R_0$ MAE** | `0.7180` | Reproductive ratio tracking precision |
+| **Outbreak Recall** | `100.0%` | Zero missed runaway cascades ($R_0 \ge 1.5$, Adoption $\ge 20\%$) |
+| **Brier Calibration Score** | `0.0673` | Quadratic divergence from true probabilistic outcome ($<0.10$ = Exceptional) |
+
 ---
 
-## 4. Real-World Case Studies Validated
+## 4. Quick Start
+
+### 4.1 Web Workstation (Fastest)
+
+```bash
+# 1. Clone repository
+git clone https://github.com/your-org/social-gravity.git
+cd "social gravity"
+
+# 2. Install dependencies
+npm install
+
+# 3. Start local development workstation
+npm run dev
+```
+Open `http://localhost:5173` in your browser.
+
+### 4.2 Verify Build & Run Tests
+
+```bash
+# Run master test suite (all 20 test modules)
+npm test
+
+# Build production client bundle
+npm run build
+```
+
+### 4.3 Ingest Real Datasets
+
+```bash
+# Inspect Stanford SNAP Facebook Ego-Networks
+npm run inspect:facebook
+
+# Ingest and report Facebook topology
+npm run import:facebook
+npm run report:facebook
+
+# Ingest Reddit discussion trees
+npm run reddit:collect
+npm run reddit:report
+```
+
+### 4.4 Desktop App Packaging (Tauri)
+
+```bash
+# Compile native desktop installer (.msi / .exe on Windows, .dmg on macOS, .AppImage on Linux)
+npm run build
+npx tauri build
+```
+Built binaries are placed in `src-tauri/target/release/bundle/`.
+
+---
+
+## 5. Real-World Case Studies Validated
 
 1. **2020 5G-COVID Cellular Panic**:
    - Reconstructed 100-node modular community with low institutional trust ($0.42$) and high peer conformity ($0.72$).
@@ -97,76 +170,39 @@ Conducted on Node.js v24.14.1 / V8 on Windows 64-bit:
 4. **2024 Voting Tabulator Rumor Incident**:
    - Modeled institutional debunking failures in low-trust ($T < 0.30$) sub-clusters; proved trust-bounded reception dynamics.
 
-*(Complete analysis available in `V2_REAL_WORLD_CASE_STUDIES.txt`)*.
+*(Detailed dossiers available in `V2_REAL_WORLD_CASE_STUDIES.txt`)*.
 
 ---
 
-## 5. Security & Penetration Certification
+## 6. Multi-Domain Operational Adapters
 
-Automated testing via `tests/security/penetrationTest.ts` subjected Social Gravity to enterprise red-team vectors:
+Social Gravity v2.0 introduces 5 pluggable domain intelligence profiles:
+- **Financial Panic & Depositor Contagion**: Core-periphery liquidity networks, panic arousal triggers, counter-voice interventions.
+- **Cybersecurity & Zero-Day Escalation**: Scale-free infrastructure graphs, exploit weaponization velocity, isolation protocols.
+- **Civil Emergency & Evacuation**: Spatial grid topologies, evacuation compliance, emergency broadcast overrides.
+- **Enterprise & Organizational Rumor**: Hierarchical corporate networks, M&A anxiety dampening, verified memo distribution.
+- **Supply Chain Disruption**: Bipartite dependency graphs, panic hoarding cascades, critical inventory allocation.
+
+---
+
+## 7. Security & Penetration Certification
+
+Automated testing via `tests/security/penetrationTest.ts` subjects Social Gravity to enterprise red-team vectors:
 - **Cross-Site Scripting (XSS)**: 6/6 injection vectors neutralized via DOMPurify and strict HTML entity encoding.
-- **Denial-of-Service (DoS)**: 50,000-line malformed inputs, truncated rows, and null bytes rejected without memory leaks.
-- **PII Scrubbing**: Built-in regex scrubbers mask IPv4/IPv6 addresses, emails, and phone numbers in all generated reports.
-- **Air-Gapped Operation**: Scoped Tauri permissions, strict Content Security Policy, zero external CDNs, and zero network pings.
+- **Denial-of-Service (DoS)**: 50,000-line malformed inputs, truncated rows, and null bytes rejected safely without memory leaks.
+- **PII Scrubbing**: Built-in regex scrubbers mask IPv4/IPv6 addresses, emails, and phone numbers in all generated intelligence briefs.
+- **Air-Gapped Operation**: Scoped Tauri permissions, strict Content Security Policy, zero external CDNs, and zero outbound network telemetry.
 
 ---
 
-## 6. Quick Start & Developer Commands
-
-### Installation
-```bash
-# Clone the repository
-git clone https://github.com/your-org/social-gravity.git
-cd "social gravity"
-
-# Install dependencies
-npm install
-
-# Launch the analyst workstation
-npm run dev
-```
-Navigate to `http://localhost:5173` to interact with the workstation.
-
-### Validation & Testing
-```bash
-# Run master invariant test suite (20 suites)
-npm test
-
-# Run empirical validation suite (Case Studies, Predictions, Stress, Security)
-npx tsx tests/validationRunner.ts
-
-# Production compilation & bundle check
-npm run build
-```
-
-### Dataset Ingestion CLI
-```bash
-# Inspect & import Stanford SNAP Facebook ego-networks
-npm run inspect:facebook
-npm run import:facebook
-
-# Ingest and replay Reddit discussion trees
-npm run reddit:collect
-npm run reddit:report
-```
-
-### Packaging Desktop Binary (Tauri)
-```bash
-# Build desktop native installer (.msi / .exe on Windows, .dmg on macOS, .AppImage on Linux)
-npm run build
-npx tauri build
-```
-
----
-
-## 7. Master Documentation Index
+## 8. Master Documentation Index
 
 All technical reports, academic manuscripts, and verification logs are persisted in the repository:
-- [`README.md`](file:///README.md): This file.
-- [`RELEASE_NOTES_v1.0.0-alpha.txt`](file:///RELEASE_NOTES_v1.0.0-alpha.txt): Version 1.0.0-alpha release summary.
-- [`INSTALLATION_GUIDE.txt`](file:///INSTALLATION_GUIDE.txt): Deployment and troubleshooting guide.
+- [`README.md`](file:///README.md): Master system guide.
 - [`CHANGELOG.md`](file:///CHANGELOG.md): SemVer release history.
-- [`V1_REPOSITORY_VALIDATION_REPORT.txt`](file:///V1_REPOSITORY_VALIDATION_REPORT.txt): Repo state & Vite build audit.
+- [`INSTALLATION_GUIDE.txt`](file:///INSTALLATION_GUIDE.txt): Deployment and troubleshooting guide.
+- [`V2_EVOLUTION_OUTPUT.txt`](file:///V2_EVOLUTION_OUTPUT.txt): Milestone M1-M9 execution log.
+- [`V2_EVOLUTION_MASTER_SUMMARY.txt`](file:///V2_EVOLUTION_MASTER_SUMMARY.txt): High-level feature index.
 - [`V2_REAL_WORLD_CASE_STUDIES.txt`](file:///V2_REAL_WORLD_CASE_STUDIES.txt): 4 historical crisis simulations.
 - [`V3_PREDICTION_BENCHMARK_REPORT.txt`](file:///V3_PREDICTION_BENCHMARK_REPORT.txt): 50-run Monte Carlo predictive accuracy report.
 - [`V4_RESEARCH_PAPER.txt`](file:///V4_RESEARCH_PAPER.txt) & [`RESEARCH_PAPER_DRAFT.md`](file:///RESEARCH_PAPER_DRAFT.md): Complete scientific paper manuscript.
@@ -174,11 +210,10 @@ All technical reports, academic manuscripts, and verification logs are persisted
 - [`V6_SECURITY_VALIDATION_REPORT.txt`](file:///V6_SECURITY_VALIDATION_REPORT.txt): Penetration testing & PII audit.
 - [`V7_DESKTOP_RELEASE.txt`](file:///V7_DESKTOP_RELEASE.txt): Tauri desktop packaging dossier.
 - [`V8_PUBLIC_DEMONSTRATION.txt`](file:///V8_PUBLIC_DEMONSTRATION.txt): 3-min, 7-min, and 15-min briefing scripts.
-- [`V9_DOCUMENTATION_PACKAGE.txt`](file:///V9_DOCUMENTATION_PACKAGE.txt): Complete documentation index.
 
 ---
 
-## 8. Citation
+## 9. Citation
 
 If you use Social Gravity in academic research, defense analysis, or commercial evaluation, please cite:
 
@@ -186,7 +221,7 @@ If you use Social Gravity in academic research, defense analysis, or commercial 
 @software{socialgravity2026,
   author = {Antigravity AI Systems Research Group},
   title = {Social Gravity: Decision Intelligence Operating System for Computational Social Physics},
-  version = {1.0.0-alpha},
+  version = {2.0.0-beta},
   year = {2026},
   url = {https://github.com/your-org/social-gravity}
 }
@@ -194,6 +229,6 @@ If you use Social Gravity in academic research, defense analysis, or commercial 
 
 ---
 
-## 9. License
+## 10. License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

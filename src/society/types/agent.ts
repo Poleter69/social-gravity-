@@ -34,6 +34,7 @@ export interface AgentMetrics {
   inDegree: number;
   outDegree: number;
   localClustering: number;
+  betweenness?: number;
 }
 
 export interface Agent {

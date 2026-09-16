@@ -2,12 +2,12 @@
 SOCIAL GRAVITY — MILESTONE V7: DESKTOP RELEASE & PACKAGING DOSSIER
 Production Desktop Client Certification (Tauri Rust Core + Vite React Client)
 Author: Principal Release Engineer & Systems Architect
-Target Version: v1.0.0-alpha
+Target Version: v2.0.0-beta
 ================================================================================
 
 1. EXECUTIVE SUMMARY
 -------------------
-Social Gravity v1.0.0-alpha has been packaged as a standalone, offline-first
+Social Gravity v2.0.0-beta has been packaged as a standalone, offline-first
 desktop application utilizing the Tauri (Rust) desktop framework and a Vite/React
 client bundle. 
 
@@ -24,7 +24,7 @@ Key Release Highlights:
 2. RELEASE MANIFEST & SPECIFICATION
 -----------------------------------
 - Product Name: SocialGravity
-- Version: 1.0.0-alpha
+- Version: 2.0.0-beta
 - Binary Identifier: com.socialgravity.desktop
 - Tauri Configuration: src-tauri/tauri.conf.json
 - Rust Core: src-tauri/Cargo.toml, src-tauri/src/main.rs
@@ -73,7 +73,7 @@ Step 3: Compile Desktop Binary via Tauri CLI
 
 5. VERIFICATION & EXIT CRITERIA
 -------------------------------
-- Package Version Alignment: package.json (1.0.0-alpha) matches tauri.conf.json (1.0.0-alpha).
+- Package Version Alignment: package.json (2.0.0-beta) matches tauri.conf.json (2.0.0-beta).
 - Asset Bundle Integrity: Code-split chunks verify clean load paths.
 - Sandbox Audit: File dialogs and export hooks pass security validation without leakages.
 

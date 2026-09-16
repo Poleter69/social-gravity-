@@ -3,8 +3,6 @@
  * Modular domain adapters for finance, cybersecurity, emergency, enterprise, and supply chain.
  */
 
-import { Society } from '../society/types/society';
-import { InformationSignal } from '../psychology/types';
 
 export type DomainType =
   | 'financial_panic'

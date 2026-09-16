@@ -13,9 +13,9 @@
  * - Supporting replay snapshot verification
  */
 
-import { Society, Agent } from '../society/types/society';
-import { SimulationState, RoundTelemetry } from '../simulation/types';
-import { DiscoveryReport } from '../discovery/types';
+import { Society } from '../society/types/society';
+import { Agent } from '../society/types/agent';
+import { SimulationState } from '../simulation/types';
 
 export interface CausalPropagationChain {
   path: Array<{

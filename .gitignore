@@ -39,3 +39,6 @@ env/
 .env.local
 .env.*.local
 *.sqlite3
+
+# Rust / Tauri
+src-tauri/target/

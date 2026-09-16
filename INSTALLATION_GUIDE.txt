@@ -1,5 +1,5 @@
 ================================================================================
-SOCIAL GRAVITY — INSTALLATION & DEPLOYMENT GUIDE (v1.0.0-alpha)
+SOCIAL GRAVITY — INSTALLATION & DEPLOYMENT GUIDE (v2.0.0-beta)
 Step-by-Step Setup for Local Development, Web Workstations & Desktop Bundles
 ================================================================================
 

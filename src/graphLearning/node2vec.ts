@@ -8,7 +8,7 @@
  * - Zero external dependencies; 100% offline and deterministic
  */
 
-import { Society, Agent } from '../society/types/society';
+import { Society } from '../society/types/society';
 import { GraphLearningConfig, GraphEmbeddingResult, EmbeddingVector } from './types';
 
 function sigmoid(x: number): number {
@@ -182,7 +182,7 @@ export class Node2VecEngine {
 
   private sampleBiasedNeighbor(
     prev: string,
-    curr: string,
+    _curr: string,
     neighbors: string[],
     random: () => number
   ): string {

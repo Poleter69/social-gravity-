@@ -3,6 +3,7 @@
  */
 
 import { Agent } from './agent';
+export type { Agent };
 import { Community, SocietyArchetype } from './community';
 import { SocialEdge, NetworkMetrics } from './network';
 
