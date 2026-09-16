@@ -47,6 +47,7 @@ import { testScientificValidation } from './research/scientificValidation.test';
 import { testEnterpriseOperations } from './enterprise/enterprise.test';
 import { testLiveNarrativeIntelligence } from './live/liveIntelligence.test';
 import { runLivePerformanceBenchmarks } from './live/livePerformance.benchmark.ts';
+import { runNetworkCanvasBenchmarks } from './canvas/networkCanvas.benchmark';
 
 console.log('========================================================');
 console.log('  SOCIAL GRAVITY - MASTER SYSTEM TEST SUITE');
@@ -148,6 +149,9 @@ async function run() {
 
     console.log('--- Milestone M19: Operational Performance & Scale Benchmarks ---');
     await runLivePerformanceBenchmarks();
+
+    console.log('--- Project Orbit: Interactive Network Canvas Benchmarks ---');
+    runNetworkCanvasBenchmarks();
 
     console.log('\n========================================================');
     console.log('  ALL V1, V2, AND V3 EVOLUTION TEST SUITES PASSED (100%)');
