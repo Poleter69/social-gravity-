@@ -54,25 +54,27 @@ export function computeGraphMetricsAndEnrichAgents(
     if (degree < 2) {
       agent.metrics.localClustering = 0;
     } else {
-      // Count edges between neighbors
+      // Count edges between neighbors (sample up to 50 neighbors for high-degree hubs to prevent CPU freeze)
       const neighborList = Array.from(neighbors);
+      const sampleNeighbors = degree > 50 ? neighborList.slice(0, 50) : neighborList;
+      const sampleDegree = sampleNeighbors.length;
       let neighborEdges = 0;
 
-      for (let i = 0; i < neighborList.length; i++) {
-        const u = neighborList[i];
+      for (let i = 0; i < sampleNeighbors.length; i++) {
+        const u = sampleNeighbors[i];
         const uNeighbors = adjMap.get(u);
         if (!uNeighbors) continue;
 
-        for (let j = i + 1; j < neighborList.length; j++) {
-          const v = neighborList[j];
+        for (let j = i + 1; j < sampleNeighbors.length; j++) {
+          const v = sampleNeighbors[j];
           if (uNeighbors.has(v)) {
             neighborEdges++;
           }
         }
       }
 
-      const possibleTriangles = (degree * (degree - 1)) / 2;
-      const localC = neighborEdges / possibleTriangles;
+      const possibleTriangles = (sampleDegree * (sampleDegree - 1)) / 2;
+      const localC = possibleTriangles > 0 ? neighborEdges / possibleTriangles : 0;
       agent.metrics.localClustering = Number(localC.toFixed(3));
       sumClustering += localC;
     }

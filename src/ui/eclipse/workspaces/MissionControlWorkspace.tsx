@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Send,
   ShieldAlert,
   ShieldCheck,
   Zap,
@@ -27,7 +26,9 @@ import {
   LiveReplayManager,
   PerformanceTelemetry,
   LiveManager,
+  StreamHealthMetrics,
 } from '../../../live';
+import { EMOTION_COLOR_MAP } from '../../../nlp/types';
 import { NarrativeFusionEngine, UnifiedNarrative } from '../../../fusion';
 import { MetricCard } from '../components/MetricCard';
 import { EmotionCapsule } from '../components/EmotionCapsule';
@@ -129,6 +130,8 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
   const [narratives, setNarratives] = useState<UnifiedNarrative[]>([]);
   const [alerts, setAlerts] = useState<LiveAlert[]>([]);
   const [commentsPerSec, setCommentsPerSec] = useState(0);
+  const [isStreamHealthOpen, setIsStreamHealthOpen] = useState(false);
+  const [streamHealth, setStreamHealth] = useState<StreamHealthMetrics | null>(null);
 
   // ── UI State ──────────────────────────────────────────────────────────────
   const [selectedNode, setSelectedNode] = useState<SimulatedNode | null>(null);
@@ -263,7 +266,8 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
       const processed = await pipeline.process(post);
       if (!processed) return;
 
-      setFeedPosts((prev) => [processed, ...prev.slice(0, 39)]);
+      // Keep latest 50 posts for UI timeline while backend preserves full 10,000 queue
+      setFeedPosts((prev) => [processed, ...prev.slice(0, 49)]);
 
       // Narrative fusion
       fusionEngine.ingestPost(processed);
@@ -279,75 +283,98 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
       }
       setAlerts(alertEngine.getAlerts());
 
-      // Mutate Canvas Nodes
+      // Mutate Canvas Nodes with true GoEmotions color and persistent living graph
       const canvas = canvasRef.current;
       if (canvas) {
-        const platformColors: Record<LivePlatform, string> = {
-          reddit: '#FB923C',
-          rss: '#38BDF8',
-          bluesky: '#60A5FA',
-          x: '#E4E4E7',
-          youtube: '#EF4444',
-          instagram: '#EC4899',
-          local: '#A1A1AA',
-        };
-
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 50 + Math.random() * (Math.min(cx, cy) - 90);
-        const nx = cx + Math.cos(angle) * dist;
-        const ny = cy + Math.sin(angle) * dist;
-
+        const emotionColor = EMOTION_COLOR_MAP[processed.emotion.dominant] || '#38BDF8';
         const isBridgeNode = processed.riskScore > 0.65;
-        const newNode: SimulatedNode = {
-          id: processed.id,
-          label: `${processed.platform.toUpperCase()}: ${processed.authorName.slice(0, 14)}`,
-          platform: processed.platform,
-          x: nx,
-          y: ny,
-          radius: isBridgeNode ? 10 : 6 + Math.random() * 3,
-          color: isBridgeNode ? '#EF4444' : platformColors[processed.platform] || '#4F8CFF',
-          isBridge: isBridgeNode,
-          pulseTimer: 30,
-          emotion: processed.emotion.dominant,
-          threatLevel: processed.riskScore > 0.65 ? 'critical' : processed.riskScore > 0.4 ? 'high' : 'low',
-          content: processed.content,
-          timestamp: processed.timestamp,
-          url: (processed as any).url,
-          isReply: post.isReply,
-        };
 
-        if (nodesRef.current.length > 40) {
-          const drop = nodesRef.current.findIndex((n) => !n.isBridge && !n.id.startsWith('anchor-'));
-          if (drop >= 0) {
-            const dropId = nodesRef.current[drop].id;
-            nodesRef.current.splice(drop, 1);
-            edgesRef.current = edgesRef.current.filter((e) => e.source !== dropId && e.target !== dropId);
+        // Check if author node already exists in canvas
+        const authorNodeId = `live-${processed.platform}-${processed.authorId}`;
+        const existingNode = nodesRef.current.find(
+          (n) => n.id === authorNodeId || n.id === processed.id || n.id === processed.authorId
+        );
+
+        if (existingNode) {
+          existingNode.emotion = processed.emotion.dominant;
+          existingNode.color = isBridgeNode ? '#EF4444' : emotionColor;
+          existingNode.pulseTimer = 35;
+          existingNode.threatLevel = isBridgeNode ? 'critical' : processed.riskScore > 0.4 ? 'high' : 'low';
+          existingNode.content = processed.content;
+          existingNode.timestamp = processed.timestamp;
+          existingNode.radius = Math.min(15, existingNode.radius + 0.5);
+        } else {
+          const cx = canvas.width / 2;
+          const cy = canvas.height / 2;
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 50 + Math.random() * (Math.min(cx, cy) - 90);
+          const nx = cx + Math.cos(angle) * dist;
+          const ny = cy + Math.sin(angle) * dist;
+
+          const newNode: SimulatedNode = {
+            id: authorNodeId,
+            label: `${processed.platform.toUpperCase()}: ${processed.authorName.slice(0, 14)}`,
+            platform: processed.platform,
+            x: nx,
+            y: ny,
+            radius: isBridgeNode ? 10 : 6 + Math.random() * 3,
+            color: isBridgeNode ? '#EF4444' : emotionColor,
+            isBridge: isBridgeNode,
+            pulseTimer: 30,
+            emotion: processed.emotion.dominant,
+            threatLevel: processed.riskScore > 0.65 ? 'critical' : processed.riskScore > 0.4 ? 'high' : 'low',
+            content: processed.content,
+            timestamp: processed.timestamp,
+            url: (processed as any).url,
+            isReply: post.isReply,
+          };
+
+          // Infinite capacity: capped at 10,000 for memory safety
+          if (nodesRef.current.length > 10_000) {
+            const drop = nodesRef.current.findIndex((n) => !n.isBridge && !n.id.startsWith('anchor-'));
+            if (drop >= 0) {
+              const dropId = nodesRef.current[drop].id;
+              nodesRef.current.splice(drop, 1);
+              edgesRef.current = edgesRef.current.filter((e) => e.source !== dropId && e.target !== dropId);
+            }
           }
-        }
-        nodesRef.current.push(newNode);
+          nodesRef.current.push(newNode);
 
-        if (nodesRef.current.length > 1) {
-          nodesRef.current
-            .filter((n) => n.id !== newNode.id)
-            .map((n) => {
-              const dx = n.x - nx;
-              const dy = n.y - ny;
-              return { n, d: Math.sqrt(dx * dx + dy * dy) };
-            })
-            .sort((a, b) => a.d - b.d)
-            .slice(0, 2)
-            .forEach(({ n, d }) => {
-              if (d < 130) {
-                edgesRef.current.push({
-                  source: newNode.id,
-                  target: n.id,
-                  weight: newNode.isBridge || n.isBridge ? 2.0 : 1.0,
-                  active: true,
-                });
-              }
-            });
+          // Thread connection if parent exists
+          const parentId = post.parentId;
+          if (parentId) {
+            const parentNode = nodesRef.current.find(
+              (n) => n.id.includes(parentId) || (n.content && n.content.includes(parentId))
+            );
+            if (parentNode && parentNode.id !== newNode.id) {
+              edgesRef.current.push({
+                source: newNode.id,
+                target: parentNode.id,
+                weight: isBridgeNode || parentNode.isBridge ? 2.2 : 1.4,
+                active: true,
+              });
+            }
+          } else if (nodesRef.current.length > 1) {
+            nodesRef.current
+              .filter((n) => n.id !== newNode.id)
+              .map((n) => {
+                const dx = n.x - nx;
+                const dy = n.y - ny;
+                return { n, d: Math.sqrt(dx * dx + dy * dy) };
+              })
+              .sort((a, b) => a.d - b.d)
+              .slice(0, 2)
+              .forEach(({ n, d }) => {
+                if (d < 130) {
+                  edgesRef.current.push({
+                    source: newNode.id,
+                    target: n.id,
+                    weight: newNode.isBridge || n.isBridge ? 2.0 : 1.0,
+                    active: true,
+                  });
+                }
+              });
+          }
         }
       }
 
@@ -361,11 +388,13 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
       }
       telemetry.recordDashboardUpdate(performance.now() - t0);
       setCommentsPerSec(liveManager.getCommentsPerSecond());
+      setStreamHealth(liveManager.getOverallStreamHealth());
     });
 
     if (isStreaming) {
       liveManager.connectConnector('reddit');
       liveManager.connectConnector('rss');
+      liveManager.connectConnector('x');
     }
     return () => liveManager.stopAll();
   }, [liveManager, pipeline, fusionEngine, alertEngine, replayManager, telemetry, isStreaming]);
@@ -520,12 +549,12 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
   const bridgeNodes = nodesRef.current.filter((n) => n.isBridge);
 
   return (
-    <div className="h-full w-full flex overflow-hidden bg-[#09090B] text-[#FAFAFA] select-none">
+    <div className="h-full w-full flex overflow-hidden bg-[var(--bg)] text-[var(--text)] select-none">
       {/* ═══════════════════════════════════════════════════════════════
           LEFT AREA: HERO LIVE NETWORK CANVAS (~70%)
           100vh strict bound with Palantir-level infinite canvas
       ═══════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 h-full relative overflow-hidden bg-[#09090B] border-r border-[#27272A]">
+      <div className="flex-1 h-full relative overflow-hidden bg-[var(--canvas-bg)] border-r border-[var(--border)]">
         {/* Flagship Palantir/Figma Infinite Canvas */}
         <NetworkCanvas
           society={activeSociety}
@@ -539,7 +568,7 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
           className="w-full h-full"
         />
 
-        {/* Floating Emotion Capsule (Top-Right of Canvas) */}
+        {/* Floating Affect Capsule Pill (Top-Right of Canvas) */}
         <div className="absolute top-4 right-4 z-20 pointer-events-auto">
           <EmotionCapsule
             dominantEmotion={dominantEmotion}
@@ -549,21 +578,94 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
           />
         </div>
 
-        {/* Floating Intelligence HUD Toggle (Top-Left, below Filter button) */}
-        <div className="absolute top-16 left-4 z-20 pointer-events-auto">
+        {/* Floating Intelligence HUD & Stream Health Toggles (Top-Left) */}
+        <div className="absolute top-16 left-4 z-20 pointer-events-auto flex items-center gap-2">
           <button
             onClick={() => setIsHudOpen(!isHudOpen)}
             className={`px-3 py-1.5 rounded-xl text-[11px] font-mono border backdrop-blur-md cursor-pointer flex items-center gap-1.5 transition-all shadow-lg ${
               isHudOpen
-                ? 'bg-[#18181B]/95 text-[#FAFAFA] border-[#27272A]'
-                : 'bg-[#111114]/80 text-[#71717A] hover:text-[#FAFAFA] border-[#27272A]'
+                ? 'bg-[var(--surface-elevated)]/95 text-[var(--text)] border-[var(--border)]'
+                : 'bg-[var(--surface)]/80 text-[var(--text-tertiary)] hover:text-[var(--text)] border-[var(--border)]'
             }`}
           >
             <Activity className="w-3.5 h-3.5 text-[#00F0FF]" />
             <span>HUD TELEMETRY</span>
-            <span className="text-[10px] text-[#71717A]">{isHudOpen ? '▲' : '▼'}</span>
+            <span className="text-[10px] text-[var(--text-tertiary)]">{isHudOpen ? '▲' : '▼'}</span>
+          </button>
+
+          <button
+            onClick={() => setIsStreamHealthOpen(!isStreamHealthOpen)}
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-mono border backdrop-blur-md cursor-pointer flex items-center gap-1.5 transition-all shadow-lg ${
+              isStreamHealthOpen
+                ? 'bg-[var(--surface-elevated)]/95 text-[#10B981] border-[#10B981]/40'
+                : 'bg-[var(--surface)]/80 text-[var(--text-tertiary)] hover:text-[var(--text)] border-[var(--border)]'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-[#10B981]" />
+            <span>STREAM HEALTH</span>
+            <span className="text-[10px] text-[var(--text-tertiary)]">{isStreamHealthOpen ? '▲' : '▼'}</span>
           </button>
         </div>
+
+        {/* Stream Health Dashboard Panel (M21.3 Infinite Engine Telemetry) */}
+        <AnimatePresence>
+          {isStreamHealthOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-26 left-4 z-30 w-96 p-4 rounded-2xl bg-[var(--surface)]/95 border border-[#10B981]/30 shadow-2xl backdrop-blur-xl font-mono text-xs space-y-3 pointer-events-auto"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+                  <span className="font-bold text-[var(--text)] uppercase tracking-wider">M21.3 Infinite Stream Telemetry</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] font-bold">
+                  {streamHealth?.status.toUpperCase() || 'LIVE'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="p-2 rounded-xl bg-[var(--surface-elevated)]/80 border border-[var(--border)]">
+                  <div className="text-[var(--text-tertiary)] text-[10px]">EVENTS INGESTED</div>
+                  <div className="text-sm font-bold text-[#00F0FF]">{streamHealth?.eventsReceived || feedPosts.length}</div>
+                </div>
+                <div className="p-2 rounded-xl bg-[var(--surface-elevated)]/80 border border-[var(--border)]">
+                  <div className="text-[var(--text-tertiary)] text-[10px]">EVENTS PROCESSED</div>
+                  <div className="text-sm font-bold text-[#10B981]">{streamHealth?.eventsProcessed || feedPosts.length}</div>
+                </div>
+                <div className="p-2 rounded-xl bg-[var(--surface-elevated)]/80 border border-[var(--border)]">
+                  <div className="text-[var(--text-tertiary)] text-[10px]">DUPLICATES SKIPPED</div>
+                  <div className="text-sm font-bold text-[#F59E0B]">{streamHealth?.duplicatesSkipped || 0}</div>
+                </div>
+                <div className="p-2 rounded-xl bg-[var(--surface-elevated)]/80 border border-[var(--border)]">
+                  <div className="text-[var(--text-tertiary)] text-[10px]">QUEUE BUFFER DEPTH</div>
+                  <div className="text-sm font-bold text-[#A855F7]">{streamHealth?.queueSize || feedPosts.length} / 10,000</div>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-[var(--surface-elevated)]/60 border border-[var(--border)] space-y-1.5 text-[10px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-tertiary)]">Active Connectors:</span>
+                  <span className="text-[var(--text)] font-bold">Reddit (Hot/New), RSS (7 Feeds), X (Public Stream)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-tertiary)]">Deduplication:</span>
+                  <span className="text-[#10B981]">Persistent Set (Zero Loop Suppression)</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-tertiary)]">Thread Conduits:</span>
+                  <span className="text-[#00F0FF]">Directed Parent-Child Edges Active</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#71717A]">Graph Capacity:</span>
+                  <span className="text-[#F59E0B]">Monotonic Append (10,000 Nodes Cap)</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Floating Intelligence HUD (Top-Left) — Strictly Four Cards per Specification */}
         <AnimatePresence>
@@ -618,12 +720,16 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
           RIGHT AREA: OPERATIONAL INTELLIGENCE PANEL (30% / 360px)
           "What is happening right now?" (Zero Clutter, Zero Feed)
       ═══════════════════════════════════════════════════════════════ */}
-      <div className="w-88 md:w-96 h-full flex flex-col bg-[#111114] shrink-0 overflow-hidden">
+      {/* ═══════════════════════════════════════════════════════════════
+          RIGHT AREA: OPERATIONAL INTELLIGENCE PANEL (30% / 360px)
+          "What is happening right now?" (Zero Clutter, Zero Feed)
+      ═══════════════════════════════════════════════════════════════ */}
+      <div className="w-88 md:w-96 h-full flex flex-col bg-[var(--surface)] border-l border-[var(--border)] shrink-0 overflow-hidden">
         {/* Header */}
-        <div className="h-12 px-4 border-b border-[#27272A] flex items-center justify-between bg-[#141417]/90 shrink-0">
+        <div className="h-12 px-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-elevated)]/90 shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-            <span className="text-[12px] font-mono uppercase font-bold tracking-wider text-[#FAFAFA]">
+            <span className="text-[12px] font-mono uppercase font-bold tracking-wider text-[var(--text)]">
               OPERATIONAL INTELLIGENCE
             </span>
           </div>
@@ -646,11 +752,11 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
               </span>
             </div>
 
-            <h3 className="text-[13px] font-semibold text-[#FAFAFA] leading-snug">
+            <h3 className="text-[13px] font-semibold text-[var(--text)] leading-snug">
               {topAlert.title}
             </h3>
 
-            <p className="text-[12px] text-[#D4D4D8] leading-snug">
+            <p className="text-[12px] text-[var(--text-secondary)] leading-snug">
               {topAlert.recommendedAction}
             </p>
 
@@ -661,20 +767,20 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
               >
                 Explain Causal Root <ArrowRight className="w-3 h-3" />
               </button>
-              <span className="text-[10px] font-mono text-[#71717A]">
+              <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
                 Plausibility: 88%
               </span>
             </div>
           </div>
 
           {/* 2. Critical Bridge Hotspots */}
-          <div className="p-3.5 rounded-xl bg-[#18181B] border border-[#27272A] space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] font-mono text-[#A1A1AA]">
-              <span className="font-bold uppercase tracking-wider text-[#FAFAFA]">Critical Bridge Hotspots</span>
+          <div className="p-3.5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)] space-y-2.5">
+            <div className="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
+              <span className="font-bold uppercase tracking-wider text-[var(--text)]">Critical Bridge Hotspots</span>
               <span className="text-[#EF4444]">{bridgeNodes.length} Detected</span>
             </div>
 
-            <p className="text-[11px] text-[#71717A] leading-tight">
+            <p className="text-[11px] text-[var(--text-tertiary)] leading-tight">
               Top boundary-spanning super-spreaders connecting disparate communities.
             </p>
 
@@ -683,14 +789,14 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
                 <div
                   key={b.id}
                   onClick={() => setSelectedNode(b)}
-                  className="p-2.5 rounded-lg bg-[#141417] border border-[#27272A] hover:border-[#EF4444]/50 transition-colors cursor-pointer flex items-center justify-between text-[12px]"
+                  className="p-2.5 rounded-lg bg-[var(--surface)] border border-[var(--border)] hover:border-[#EF4444]/50 transition-colors cursor-pointer flex items-center justify-between text-[12px]"
                 >
                   <div className="truncate pr-2">
-                    <div className="font-medium text-[#FAFAFA] truncate flex items-center gap-1.5">
+                    <div className="font-medium text-[var(--text)] truncate flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-[#EF4444] shrink-0" />
                       {b.label}
                     </div>
-                    <div className="text-[10px] font-mono text-[#71717A] mt-0.5">
+                    <div className="text-[10px] font-mono text-[var(--text-tertiary)] mt-0.5">
                       Betweenness: 0.89 • Threat: {b.threatLevel.toUpperCase()}
                     </div>
                   </div>
@@ -704,9 +810,9 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
           </div>
 
           {/* 3. Quick Counter-Interventions */}
-          <div className="p-3.5 rounded-xl bg-[#18181B] border border-[#27272A] space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] font-mono text-[#A1A1AA]">
-              <span className="font-bold uppercase tracking-wider text-[#FAFAFA]">One-Click Interventions</span>
+          <div className="p-3.5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)] space-y-2.5">
+            <div className="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
+              <span className="font-bold uppercase tracking-wider text-[var(--text)]">One-Click Interventions</span>
               <span className="text-[#22C55E]">PARETO OPTIMAL</span>
             </div>
 
@@ -715,13 +821,13 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 onClick={onDeployInoculation}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#4F8CFF] hover:bg-[#3B79F0] text-[#09090B] font-semibold text-[12px] cursor-pointer shadow-md shadow-[#4F8CFF]/15"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#4F8CFF] hover:bg-[#3B79F0] text-white font-semibold text-[12px] cursor-pointer shadow-md shadow-[#4F8CFF]/15"
               >
                 <div className="flex items-center gap-2">
                   <Zap className="w-3.5 h-3.5 fill-current" />
                   <span>Deploy Bridge Inoculation</span>
                 </div>
-                <span className="text-[10px] font-mono uppercase bg-[#09090B]/15 px-1.5 py-0.2 rounded font-bold">
+                <span className="text-[10px] font-mono uppercase bg-white/20 px-1.5 py-0.5 rounded font-bold">
                   -74% R₀
                 </span>
               </motion.button>
@@ -730,7 +836,7 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 onClick={onInjectDebunk}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#141417] hover:bg-[#27272A] text-[#FAFAFA] border border-[#27272A] font-medium text-[12px] cursor-pointer transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-elevated)] text-[var(--text)] border border-[var(--border)] font-medium text-[12px] cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#22C55E]" />
@@ -745,25 +851,25 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 onClick={onNavigateToCompare}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[#141417] hover:bg-[#27272A] text-[#A1A1AA] hover:text-[#FAFAFA] border border-[#27272A] text-[12px] cursor-pointer transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--surface)] hover:bg-[var(--surface-elevated)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] text-[12px] cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <GitFork className="w-3.5 h-3.5 text-[#4F8CFF]" />
                   <span>Launch Counterfactual Optimizer</span>
                 </div>
-                <ArrowRight className="w-3 h-3 text-[#71717A]" />
+                <ArrowRight className="w-3 h-3 text-[var(--text-tertiary)]" />
               </motion.button>
             </div>
           </div>
 
           {/* 4. Analyst Copilot */}
-          <div className="p-3.5 rounded-xl bg-[#18181B] border border-[#27272A] space-y-3">
+          <div className="p-3.5 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)] space-y-3">
             <div className="flex items-center justify-between text-[11px] font-mono">
-              <span className="font-bold uppercase tracking-wider text-[#FAFAFA] flex items-center gap-1.5">
+              <span className="font-bold uppercase tracking-wider text-[var(--text)] flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#4F8CFF]" />
                 Analyst Copilot
               </span>
-              <span className="text-[10px] text-[#71717A]">PALANTIR GROUNDED</span>
+              <span className="text-[10px] text-[var(--text-tertiary)]">PALANTIR GROUNDED</span>
             </div>
 
             {/* Message Bubble */}
@@ -773,15 +879,15 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
                   key={i}
                   className={`p-2.5 rounded-lg text-[12px] leading-relaxed ${
                     msg.role === 'analyst'
-                      ? 'bg-[#4F8CFF]/15 text-[#FAFAFA] ml-4 border border-[#4F8CFF]/30'
-                      : 'bg-[#141417] text-[#D4D4D8] border border-[#27272A]'
+                      ? 'bg-[#4F8CFF]/15 text-[var(--text)] ml-4 border border-[#4F8CFF]/30'
+                      : 'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)]'
                   }`}
                 >
                   <p>{msg.text}</p>
                   {msg.citations && (
                     <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       {msg.citations.map((c, ci) => (
-                        <span key={ci} className="text-[9px] font-mono text-[#71717A] bg-[#18181B] px-1 py-0.5 rounded border border-[#27272A]">
+                        <span key={ci} className="text-[9px] font-mono text-[var(--text-tertiary)] bg-[var(--surface-elevated)] px-1 py-0.5 rounded border border-[var(--border)]">
                           {c}
                         </span>
                       ))}
@@ -790,7 +896,7 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
                 </div>
               ))}
               {isCopilotTyping && (
-                <div className="text-[11px] font-mono text-[#71717A] animate-pulse">
+                <div className="text-[11px] font-mono text-[var(--text-tertiary)] animate-pulse">
                   Synthesizing network priors...
                 </div>
               )}
@@ -809,14 +915,14 @@ export const MissionControlWorkspace: React.FC<MissionControlWorkspaceProps> = (
                 value={copilotQuery}
                 onChange={(e) => setCopilotQuery(e.target.value)}
                 placeholder="Ask about causal root or R₀..."
-                className="flex-1 px-3 py-1.5 rounded-lg bg-[#141417] border border-[#27272A] focus:border-[#4F8CFF] text-[12px] text-[#FAFAFA] placeholder-[#71717A] outline-none"
+                className="flex-1 px-3 py-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border)] focus:border-[#4F8CFF] text-[12px] text-[var(--text)] placeholder-[var(--text-tertiary)] outline-none"
               />
               <button
                 type="submit"
                 disabled={!copilotQuery.trim() || isCopilotTyping}
-                className="p-1.5 rounded-lg bg-[#4F8CFF] hover:bg-[#3B79F0] disabled:opacity-40 text-[#09090B] cursor-pointer"
+                className="p-1.5 rounded-lg bg-[#4F8CFF] hover:bg-[#3B79F0] disabled:opacity-40 text-white cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>
           </div>

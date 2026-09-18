@@ -17,7 +17,8 @@ export class EdgeRenderer {
     selectedNodeId: string | null,
     hoveredNodeId: string | null,
     focusNarrativeNodeIds: Set<string> | null,
-    zoomScale: number
+    zoomScale: number,
+    isLight: boolean = false
   ): void {
     const isFocusActive = focusNarrativeNodeIds !== null && focusNarrativeNodeIds.size > 0;
     const isMesoOrMicro = zoomScale >= 0.55;
@@ -39,13 +40,13 @@ export class EdgeRenderer {
       }
 
       // Edge Opacity calculation
-      let opacity = 0.22;
+      let opacity = isLight ? 0.32 : 0.22;
       if (isFocusActive) {
         opacity = isPartOfFocusNarrative ? 0.85 : 0.04;
       } else if (isConnectedToSelected || isConnectedToHovered) {
         opacity = 0.95;
       } else if (isBridgeEdge) {
-        opacity = 0.65;
+        opacity = isLight ? 0.75 : 0.65;
       } else if (!isMesoOrMicro) {
         // Far zoom: only draw bridge edges to eliminate clutter
         if (!isBridgeEdge) continue;
@@ -64,19 +65,19 @@ export class EdgeRenderer {
         ctx.shadowColor = '#EF4444';
         ctx.shadowBlur = 8;
       } else if (isConnectedToSelected || isConnectedToHovered) {
-        ctx.strokeStyle = `rgba(0, 240, 255, ${opacity})`; // Neon cyan connection highlight
+        ctx.strokeStyle = isLight ? `rgba(2, 132, 199, ${opacity})` : `rgba(0, 240, 255, ${opacity})`; // Cyan/sky highlight
         ctx.lineWidth = 2.0;
-        ctx.shadowColor = '#00F0FF';
+        ctx.shadowColor = isLight ? '#0284C7' : '#00F0FF';
         ctx.shadowBlur = 6;
       } else if (e.critical) {
         ctx.strokeStyle = `rgba(239, 68, 68, ${opacity})`; // Critical transmission vector
         ctx.lineWidth = Math.max(1.2, e.weight * 1.6);
       } else if (isBridgeEdge) {
-        ctx.strokeStyle = `rgba(245, 158, 11, ${opacity})`; // Glowing amber inter-cluster bridge
+        ctx.strokeStyle = isLight ? `rgba(217, 119, 6, ${opacity})` : `rgba(245, 158, 11, ${opacity})`; // Amber bridge
         ctx.lineWidth = Math.max(1.4, e.weight * 1.5);
         ctx.setLineDash([6, 4]);
       } else {
-        ctx.strokeStyle = `rgba(148, 163, 184, ${opacity})`; // Clean subtle slate intra-community tie
+        ctx.strokeStyle = isLight ? `rgba(100, 116, 139, ${opacity})` : `rgba(148, 163, 184, ${opacity})`; // Subtle slate tie
         ctx.lineWidth = Math.max(0.7, e.weight);
       }
 

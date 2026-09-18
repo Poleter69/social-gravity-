@@ -1,0 +1,19 @@
+# =========================================================================
+# Social Gravity — Cloudflare Pages & Workers Configuration
+# Zero-Cost Production Configuration ($0.00 / month)
+# =========================================================================
+
+name = "social-gravity"
+compatibility_date = "2024-09-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# Free tier limits: 100,000 requests/day, 10ms CPU per request
+[vars]
+ENVIRONMENT = "production"
+MAX_SIMULATION_NODES = "5000"
+CORS_ORIGIN = "*"
+OFFLINE_FALLBACK = "true"
+
+# Automated analytics (Cloudflare Free Privacy-Preserving Web Analytics)
+# Zero cookie tracking, fully GDPR compliant

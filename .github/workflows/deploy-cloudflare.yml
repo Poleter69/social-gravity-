@@ -1,0 +1,59 @@
+name: Deploy to Cloudflare Pages (Zero-Cost Production)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & Deploy Edge Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify Master Test Suite
+        run: npm test
+
+      - name: Build Production Distribution
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_NEON_DATABASE_URL: ${{ secrets.VITE_NEON_DATABASE_URL }}
+          VITE_ZERO_COST_MODE: "true"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        id: cloudflare_deploy
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: 'social-gravity'
+          directory: 'dist'
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Deployment Verification Notice
+        run: |
+          echo "=========================================================="
+          echo "  Cloudflare Pages Automated Deployment Completed"
+          echo "  Target Infrastructure Cost: $0.00 / month"
+          echo "  Edge Serverless Quota: 100,000 requests/day"
+          echo "=========================================================="

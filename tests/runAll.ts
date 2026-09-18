@@ -48,6 +48,37 @@ import { testEnterpriseOperations } from './enterprise/enterprise.test';
 import { testLiveNarrativeIntelligence } from './live/liveIntelligence.test';
 import { runLivePerformanceBenchmarks } from './live/livePerformance.benchmark.ts';
 import { runNetworkCanvasBenchmarks } from './canvas/networkCanvas.benchmark';
+import { runSafetyBenchmarks } from './safety/safetyClassifier.benchmark';
+import { testM21LiveSignalIntelligence } from './live/m21LiveSignalIntelligence.test';
+import { testM21_2EmotionGraphPipeline } from './live/m21_2EmotionGraphPipeline.test';
+import { testM21_3InfiniteStreamEngine } from './live/m21_3InfiniteStreamEngine.test';
+
+// M21.4: Live Stream Verification Protocol (Automated Integration Suite)
+import { testConnectorHealth } from './live/connectorHealth.test';
+import { testStreamContinuity } from './live/streamContinuity.test';
+import { testEmotionPipeline } from './live/emotionPipeline.test';
+import { testGraphGrowth } from './live/graphGrowth.test';
+import { testDuplicateSuppression } from './live/duplicateSuppression.test';
+import { testReplayIntegrity } from './live/replayIntegrity.test';
+import { testCameraState } from './live/cameraState.test';
+
+// Project Aurora: Light Theme & Design Token Verification Suite
+import { testThemeSuite } from './theme/index';
+
+// Project Aurora: Post-Login Landing Experience Suite
+import { testLandingExperience } from './onboarding/landingExperience.test';
+
+// Milestone M22: Playback Control System Verification Suite
+import { testPlaybackSuite } from './playback/index';
+
+// Milestone M22.1: Replay Engine Desynchronization Verification Suite
+import { testM22_1ReplaySuite } from './replay/index';
+
+// Project Dossier: Premium Downloadable Intelligence Report Verification Suite
+import { testProjectDossierSuite } from './dossier/dossier.test';
+
+// Zero-Cost Production Architecture Suite
+import { runZeroCostTests } from './zeroCost/zeroCostArchitecture.test';
 
 console.log('========================================================');
 console.log('  SOCIAL GRAVITY - MASTER SYSTEM TEST SUITE');
@@ -153,9 +184,49 @@ async function run() {
     console.log('--- Project Orbit: Interactive Network Canvas Benchmarks ---');
     runNetworkCanvasBenchmarks();
 
+    console.log('--- Milestone M20: Safety Intelligence Filters Benchmarks ---');
+    await runSafetyBenchmarks();
+
+    console.log('--- Milestone M21: Live Signal Intelligence Architecture ---');
+    await testM21LiveSignalIntelligence();
+
+    console.log('--- Milestone M21.2: Emotion Graph Pipeline Repair ---');
+    await testM21_2EmotionGraphPipeline();
+
+    console.log('--- Milestone M21.3: Infinite Live Stream Engine ---');
+    await testM21_3InfiniteStreamEngine();
+
+    console.log('--- Milestone M21.4: Live Stream Verification Protocol (7 Suites) ---');
+    await testConnectorHealth();
+    await testStreamContinuity();
+    await testEmotionPipeline();
+    await testDuplicateSuppression();
+    await testGraphGrowth();
+    await testCameraState();
+    await testReplayIntegrity();
+
+    console.log('--- Project Aurora: Theme Verification Suite ---');
+    await testThemeSuite();
+
+    console.log('--- Project Aurora: Post-Login Landing Experience Suite ---');
+    testLandingExperience();
+
+    console.log('\n--- Milestone M22: Playback Control System Verification ---');
+    await testPlaybackSuite();
+
+    console.log('--- Milestone M22.1: Replay Engine Desynchronization Fix Verification ---');
+    await testM22_1ReplaySuite();
+
+    console.log('\n--- Project Dossier: Intelligence Dossier Verification ---');
+    await testProjectDossierSuite();
+
+    console.log('\n--- Zero-Cost Architecture Verification Suite ---');
+    await runZeroCostTests();
+
     console.log('\n========================================================');
     console.log('  ALL V1, V2, AND V3 EVOLUTION TEST SUITES PASSED (100%)');
     console.log('========================================================');
+    process.exit(0);
   } catch (error) {
     console.error('\n❌ Test Suite Failed with error:', error);
     process.exit(1);

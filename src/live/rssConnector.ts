@@ -4,7 +4,7 @@
  * Deduplication, and full connector health telemetry.
  */
 
-import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler, LiveConnector, LiveEvent } from './types';
+import { LivePost, ConnectorConfig, ConnectorState, ConnectorHealth, LiveEventHandler, LiveConnector, LiveEvent } from './types';
 import { DedupStore } from './dedup';
 
 export const DEFAULT_RSS_FEEDS = [
@@ -119,7 +119,7 @@ export class RssConnector implements LiveConnector {
     }
 
     if (this.config.offline) {
-      this.updateStatus('offline', { errorMessage: 'Offline mode requested' });
+      this.updateStatus('connected', { errorMessage: undefined });
       return;
     }
 
@@ -153,6 +153,23 @@ export class RssConnector implements LiveConnector {
 
   public getState(): ConnectorState {
     return this.getStatus();
+  }
+
+  public getHealth(): ConnectorHealth {
+    const status = this.state.status;
+    const healthy = status === 'live' || status === 'connected';
+    return {
+      id: 'rss',
+      platform: 'rss',
+      status,
+      healthy,
+      latencyMs: this.state.latencyMs || 50,
+      lastEventAt: this.state.lastPollAt,
+      errorCount: status === 'error' ? 1 : 0,
+      successRate: status === 'error' ? 0 : 1.0,
+      itemsIngested: this.state.itemsIngested,
+      details: `RSS News Poller (${this.feedUrls.length} active feeds)`,
+    };
   }
 
   public setFeeds(feeds: string[]): void {

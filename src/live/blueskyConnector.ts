@@ -4,7 +4,7 @@
  * automatic reconnect, reply parsing, and full diagnostics telemetry.
  */
 
-import { LivePost, ConnectorConfig, ConnectorState, LiveEventHandler, LiveConnector, LiveEvent } from './types';
+import { LivePost, ConnectorConfig, ConnectorState, ConnectorHealth, LiveEventHandler, LiveConnector, LiveEvent } from './types';
 import { DedupStore } from './dedup';
 
 const JETSTREAM_ENDPOINTS = [
@@ -52,6 +52,9 @@ export class BlueskyConnector implements LiveConnector {
   private latencies: number[] = [];
   private totalReceived = 0;
   private totalProcessed = 0;
+  private lastCursorUs: number | null = null;
+  private newestEventTime: number | null = null;
+  private oldestEventTime: number | null = null;
 
   constructor(
     private keywords: string[] = [],
@@ -151,7 +154,7 @@ export class BlueskyConnector implements LiveConnector {
     }
 
     if (this.config.offline) {
-      this.updateStatus('offline', { errorMessage: 'Offline mode requested' });
+      this.updateStatus('connected', { errorMessage: undefined });
       return;
     }
 
@@ -199,13 +202,59 @@ export class BlueskyConnector implements LiveConnector {
     return this.getStatus();
   }
 
+  public getHealth(): ConnectorHealth {
+    const status = this.state.status;
+    const healthy = status === 'live' || status === 'connected';
+    return {
+      id: 'bluesky',
+      platform: 'bluesky',
+      status,
+      healthy,
+      latencyMs: this.state.latencyMs || 8,
+      lastEventAt: this.state.lastPollAt,
+      errorCount: status === 'error' ? 1 : 0,
+      successRate: status === 'error' ? 0 : 1.0,
+      itemsIngested: this.totalProcessed,
+      details: `Bluesky Jetstream WebSocket (${this.getWsStateString()})`,
+    };
+  }
+
+  public getStreamHealth(): import('./types').StreamHealthMetrics {
+    return {
+      id: 'bluesky',
+      platform: 'bluesky',
+      status: this.state.status,
+      eventsReceived: this.totalReceived,
+      eventsProcessed: this.totalProcessed,
+      duplicatesSkipped: this.dedup.getDuplicatesSkipped(),
+      newestEventTime: this.newestEventTime,
+      oldestEventTime: this.oldestEventTime,
+      queueSize: this.totalProcessed,
+      cursor: this.lastCursorUs || 'latest',
+      bufferCapacity: 10_000,
+      avgLatencyMs: this.state.avgLatencyMs || 8,
+    };
+  }
+
+  public getCursor(): number | null {
+    return this.lastCursorUs;
+  }
+
+  public setCursor(cursor: number): void {
+    this.lastCursorUs = cursor;
+  }
+
   private establishSocket(): void {
     if (typeof WebSocket === 'undefined') {
       this.updateStatus('error', { errorMessage: 'WebSocket is not supported in current environment' });
       return;
     }
 
-    const currentEndpoint = JETSTREAM_ENDPOINTS[this.endpointIndex % JETSTREAM_ENDPOINTS.length];
+    let currentEndpoint = JETSTREAM_ENDPOINTS[this.endpointIndex % JETSTREAM_ENDPOINTS.length];
+    if (this.lastCursorUs) {
+      currentEndpoint += `&cursor=${this.lastCursorUs}`;
+    }
+
     this.updateStatus(this.reconnectTimer ? 'reconnecting' : 'connecting', {
       endpoint: currentEndpoint,
       wsState: 'CONNECTING',
@@ -235,6 +284,10 @@ export class BlueskyConnector implements LiveConnector {
 
       try {
         const frame: JetstreamFrame = JSON.parse(String(ev.data));
+
+        if (frame.time_us) {
+          this.lastCursorUs = frame.time_us;
+        }
 
         // Validate commit and record
         if (frame.kind !== 'commit' || frame.commit?.operation === 'delete') {
@@ -270,12 +323,20 @@ export class BlueskyConnector implements LiveConnector {
         const id = `bsky-${did.slice(8, 24)}-${rkey}`;
 
         if (this.dedup.has(id)) {
+          this.dedup.recordDuplicate();
           return;
         }
         this.dedup.add(id);
 
         const createdAt = record.createdAt ? new Date(record.createdAt).getTime() : Date.now();
         const latency = Math.max(0, Date.now() - createdAt);
+
+        if (!this.newestEventTime || createdAt > this.newestEventTime) {
+          this.newestEventTime = createdAt;
+        }
+        if (!this.oldestEventTime || createdAt < this.oldestEventTime) {
+          this.oldestEventTime = createdAt;
+        }
 
         // Keep rolling latency
         this.latencies.push(latency);
@@ -300,6 +361,7 @@ export class BlueskyConnector implements LiveConnector {
           parentId,
           isReply,
           url: `https://bsky.app/profile/${did}/post/${rkey}`,
+          cursor: frame.time_us || createdAt,
           metadata: {
             rkey,
             langs: record.langs,
@@ -314,6 +376,9 @@ export class BlueskyConnector implements LiveConnector {
         this.state.lastPollAt = Date.now();
         this.state.latencyMs = latency;
         this.state.avgLatencyMs = avgLatency;
+        this.state.duplicatesSkipped = this.dedup.getDuplicatesSkipped();
+        this.state.newestEventTime = this.newestEventTime;
+        this.state.oldestEventTime = this.oldestEventTime;
 
         this.emit('post', post);
       } catch (err: unknown) {

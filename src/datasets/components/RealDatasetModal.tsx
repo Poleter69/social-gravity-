@@ -124,53 +124,53 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gravity-950/80 backdrop-blur-md">
-      <div className="bg-gravity-900 border border-cyan-500/30 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
+      <div className="bg-[var(--surface)] border border-[var(--border)] w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-[var(--text)] animate-in fade-in zoom-in-95 duration-200">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-gravity-800 flex items-center justify-between bg-gravity-950/60">
+        <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-elevated)]/60">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-400">
+            <div className="p-2 rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-[var(--primary)]">
               <Database className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
+              <h2 className="text-base font-bold text-[var(--text)] font-mono flex items-center gap-2">
                 <span>LOAD REAL-WORLD DATASET</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 font-mono">
                   V2 INGESTION
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--text-tertiary)]">
                 Import authentic Reddit conversation trees, SNAP Facebook networks, or custom graph exports.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-gravity-800 transition-colors"
+            className="text-[var(--text-tertiary)] hover:text-[var(--text)] p-1 rounded-lg hover:bg-[var(--surface-elevated)] transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-gravity-800 bg-gravity-950/40 px-6 pt-2">
+        <div className="flex border-b border-[var(--border)] bg-[var(--surface-elevated)]/40 px-6 pt-2">
           <button
             onClick={() => { setActiveTab('benchmarks'); setErrorMsg(null); }}
-            className={`pb-2.5 px-4 text-xs font-mono font-semibold transition-all border-b-2 ${
+            className={`pb-2.5 px-4 text-xs font-mono font-semibold transition-all border-b-2 cursor-pointer ${
               activeTab === 'benchmarks'
-                ? 'border-cyan-400 text-cyan-300'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[var(--primary)] text-[var(--primary)]'
+                : 'border-transparent text-[var(--text-tertiary)] hover:text-[var(--text)]'
             }`}
           >
             Curated Empirical Benchmarks
           </button>
           <button
             onClick={() => { setActiveTab('upload'); setErrorMsg(null); }}
-            className={`pb-2.5 px-4 text-xs font-mono font-semibold transition-all border-b-2 ${
+            className={`pb-2.5 px-4 text-xs font-mono font-semibold transition-all border-b-2 cursor-pointer ${
               activeTab === 'upload'
-                ? 'border-cyan-400 text-cyan-300'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[var(--primary)] text-[var(--primary)]'
+                : 'border-transparent text-[var(--text-tertiary)] hover:text-[var(--text)]'
             }`}
           >
             Custom File Import (.json / .edges / .txt)
@@ -181,7 +181,7 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
         <div className="p-6 space-y-6 overflow-y-auto flex-1 font-mono text-xs">
           {activeTab === 'benchmarks' ? (
             <div className="space-y-4">
-              <label className="text-slate-400 block font-semibold">Select Research Dataset:</label>
+              <label className="text-[var(--text-tertiary)] block font-semibold">Select Research Dataset:</label>
               <div className="grid grid-cols-1 gap-2.5">
                 {datasets.map((d) => (
                   <div
@@ -189,21 +189,21 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
                     onClick={() => setSelectedId(d.id)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                       selectedId === d.id
-                        ? 'bg-cyan-950/40 border-cyan-500 text-white shadow-glow-cyan'
-                        : 'bg-gravity-950/50 border-gravity-800 text-slate-400 hover:border-gravity-700 hover:text-slate-300'
+                        ? 'bg-[var(--primary)]/10 border-[var(--primary)] text-[var(--text)] shadow-sm'
+                        : 'bg-[var(--surface-elevated)] border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--border-subtle)]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-bold text-sm font-sans text-white">{d.name}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-gravity-800 text-cyan-300 border border-gravity-700">
+                      <span className="font-bold text-sm font-sans text-[var(--text)]">{d.name}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--primary)] border border-[var(--border)]">
                         {d.badge}
                       </span>
                     </div>
-                    <p className="text-slate-400 text-xs font-sans mb-2">{d.description}</p>
-                    <div className="flex items-center gap-4 text-[11px] text-slate-500 font-mono">
-                      <span>Nodes: <strong className="text-cyan-400">{d.estimatedNodes}</strong></span>
-                      <span>Edges: <strong className="text-amber-400">{d.estimatedEdges}</strong></span>
-                      <span>Focus: <span className="text-slate-300">{d.researchFocus}</span></span>
+                    <p className="text-[var(--text-secondary)] text-xs font-sans mb-2">{d.description}</p>
+                    <div className="flex items-center gap-4 text-[11px] text-[var(--text-tertiary)] font-mono">
+                      <span>Nodes: <strong className="text-[var(--primary)]">{d.estimatedNodes}</strong></span>
+                      <span>Edges: <strong className="text-amber-500">{d.estimatedEdges}</strong></span>
+                      <span>Focus: <span className="text-[var(--text-secondary)]">{d.researchFocus}</span></span>
                     </div>
                   </div>
                 ))}
@@ -218,19 +218,19 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
                   dragActive
-                    ? 'border-cyan-400 bg-cyan-950/20'
-                    : 'border-gravity-800 bg-gravity-950/40 hover:border-gravity-700'
+                    ? 'border-[var(--primary)] bg-[var(--primary)]/10'
+                    : 'border-[var(--border)] bg-[var(--surface-elevated)]/40 hover:border-[var(--border-subtle)]'
                 }`}
               >
-                <Upload className="h-8 w-8 mx-auto mb-3 text-cyan-400" />
-                <p className="text-sm font-sans text-white font-bold mb-1">
+                <Upload className="h-8 w-8 mx-auto mb-3 text-[var(--primary)]" />
+                <p className="text-sm font-sans text-[var(--text)] font-bold mb-1">
                   Drag and drop your dataset file here
                 </p>
-                <p className="text-xs text-slate-400 font-sans mb-4">
-                  Supports Stanford SNAP edge-lists (<code className="text-cyan-300">.edges</code>, <code className="text-cyan-300">.txt</code>) and Reddit/Canonical exports (<code className="text-cyan-300">.json</code>)
+                <p className="text-xs text-[var(--text-tertiary)] font-sans mb-4">
+                  Supports Stanford SNAP edge-lists (<code className="text-[var(--primary)]">.edges</code>, <code className="text-[var(--primary)]">.txt</code>) and Reddit/Canonical exports (<code className="text-[var(--primary)]">.json</code>)
                 </p>
-                <label className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-gravity-800 hover:bg-gravity-700 border border-gravity-700 text-white cursor-pointer transition-colors">
-                  <FileText className="h-4 w-4 text-cyan-400" />
+                <label className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] cursor-pointer transition-colors">
+                  <FileText className="h-4 w-4 text-[var(--primary)]" />
                   <span>Browse Files</span>
                   <input
                     type="file"
@@ -244,7 +244,7 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
                   />
                 </label>
                 {uploadedFileName && (
-                  <div className="mt-3 text-cyan-400 text-xs font-mono">
+                  <div className="mt-3 text-[var(--primary)] text-xs font-mono">
                     Selected: <strong>{uploadedFileName}</strong>
                   </div>
                 )}
@@ -254,7 +254,7 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
 
           {/* Loading State */}
           {isLoading && (
-            <div className="flex items-center justify-center p-6 space-x-3 text-cyan-400 bg-gravity-950/40 rounded-xl border border-gravity-800">
+            <div className="flex items-center justify-center p-6 space-x-3 text-[var(--primary)] bg-[var(--surface-elevated)]/40 rounded-xl border border-[var(--border)]">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span>Ingesting and computing graph metrics...</span>
             </div>
@@ -262,7 +262,7 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
 
           {/* Error Banner */}
           {errorMsg && (
-            <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/50 text-red-400 flex items-start space-x-2.5">
+            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-start space-x-2.5">
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
               <div>
                 <strong className="block font-bold">Ingestion Error:</strong>
@@ -273,60 +273,60 @@ export const RealDatasetModal: React.FC<RealDatasetModalProps> = ({
 
           {/* Dataset Metadata Preview Card */}
           {previewResult && !isLoading && !errorMsg && (
-            <div className="bg-gravity-950/80 border border-gravity-800 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-gravity-800 pb-2">
+            <div className="bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span className="font-bold text-white uppercase">{previewResult.society.name}</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <span className="font-bold text-[var(--text)] uppercase">{previewResult.society.name}</span>
                 </div>
-                <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded font-mono">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">
                   VALIDATED ({previewResult.validationReport.validRecordsCount} records)
                 </span>
               </div>
 
               {/* Topology Metric Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-[11px]">
-                <div className="bg-gravity-900/90 p-2.5 rounded-lg border border-gravity-800">
-                  <span className="text-slate-500 block">Total Nodes</span>
-                  <span className="text-base font-bold text-white">{previewResult.society.summary.totalPopulation}</span>
+                <div className="bg-[var(--surface)] p-2.5 rounded-lg border border-[var(--border)]">
+                  <span className="text-[var(--text-tertiary)] block">Total Nodes</span>
+                  <span className="text-base font-bold text-[var(--text)]">{previewResult.society.summary.totalPopulation}</span>
                 </div>
-                <div className="bg-gravity-900/90 p-2.5 rounded-lg border border-gravity-800">
-                  <span className="text-slate-500 block">Total Edges</span>
-                  <span className="text-base font-bold text-amber-400">{previewResult.society.edges.length}</span>
+                <div className="bg-[var(--surface)] p-2.5 rounded-lg border border-[var(--border)]">
+                  <span className="text-[var(--text-tertiary)] block">Total Edges</span>
+                  <span className="text-base font-bold text-amber-500">{previewResult.society.edges.length}</span>
                 </div>
-                <div className="bg-gravity-900/90 p-2.5 rounded-lg border border-gravity-800">
-                  <span className="text-slate-500 block">Modularity Q</span>
-                  <span className="text-base font-bold text-cyan-400">{previewResult.canonicalGraph.modularity.toFixed(3)}</span>
+                <div className="bg-[var(--surface)] p-2.5 rounded-lg border border-[var(--border)]">
+                  <span className="text-[var(--text-tertiary)] block">Modularity Q</span>
+                  <span className="text-base font-bold text-[var(--primary)]">{previewResult.canonicalGraph.modularity.toFixed(3)}</span>
                 </div>
-                <div className="bg-gravity-900/90 p-2.5 rounded-lg border border-gravity-800">
-                  <span className="text-slate-500 block">Communities</span>
-                  <span className="text-base font-bold text-emerald-400">{previewResult.society.summary.communityCount}</span>
+                <div className="bg-[var(--surface)] p-2.5 rounded-lg border border-[var(--border)]">
+                  <span className="text-[var(--text-tertiary)] block">Communities</span>
+                  <span className="text-base font-bold text-emerald-500">{previewResult.society.summary.communityCount}</span>
                 </div>
               </div>
 
               {/* Dynamic Metrics Secondary Row */}
-              <div className="flex flex-wrap gap-4 text-[11px] text-slate-400 pt-1">
-                <span>Density: <strong className="text-slate-200">{(previewResult.society.summary.density * 100).toFixed(2)}%</strong></span>
-                <span>Average Degree: <strong className="text-slate-200">{previewResult.society.summary.averageDegree}</strong></span>
-                <span>Bridges: <strong className="text-amber-300">{previewResult.society.summary.bridgeNodeCount}</strong></span>
-                <span>Influencers: <strong className="text-cyan-300">{previewResult.society.summary.influencerCount}</strong></span>
+              <div className="flex flex-wrap gap-4 text-[11px] text-[var(--text-tertiary)] pt-1">
+                <span>Density: <strong className="text-[var(--text-secondary)]">{(previewResult.society.summary.density * 100).toFixed(2)}%</strong></span>
+                <span>Average Degree: <strong className="text-[var(--text-secondary)]">{previewResult.society.summary.averageDegree}</strong></span>
+                <span>Bridges: <strong className="text-amber-500">{previewResult.society.summary.bridgeNodeCount}</strong></span>
+                <span>Influencers: <strong className="text-[var(--primary)]">{previewResult.society.summary.influencerCount}</strong></span>
               </div>
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-gravity-800 bg-gravity-950/70 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--surface-elevated)]/70 flex items-center justify-between">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gravity-800 hover:bg-gravity-700 text-slate-300 font-mono text-xs transition-colors"
+            className="px-4 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] font-mono text-xs transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleApply}
             disabled={!previewResult || isLoading}
-            className="inline-flex items-center space-x-2 px-5 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:bg-gravity-800 disabled:text-slate-500 text-gravity-950 font-mono text-xs font-bold transition-all shadow-glow-cyan cursor-pointer disabled:cursor-not-allowed"
+            className="inline-flex items-center space-x-2 px-5 py-2 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-[var(--bg)] disabled:bg-[var(--surface-elevated)] disabled:text-[var(--text-tertiary)] font-mono text-xs font-bold transition-all cursor-pointer disabled:cursor-not-allowed"
           >
             <span>Load Into Simulator</span>
             <ArrowRight className="h-4 w-4" />

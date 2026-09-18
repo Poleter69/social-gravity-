@@ -2,39 +2,164 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Project Aurora: CSS Custom Properties ─────────────────────────────────
+   Defaults to dark theme. Light theme swaps these via ThemeProvider.
+   All components reference var(--xxx) or eclipse-* Tailwind classes.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg: #09090B;
+  --surface: #111114;
+  --surface-elevated: #18181B;
+  --surface-secondary: #18181B;
+  --border: #27272A;
+  --border-subtle: #1F1F23;
+  --text: #FAFAFA;
+  --text-secondary: #D4D4D8;
+  --text-muted: #A1A1AA;
+  --text-tertiary: #71717A;
+  --primary: #4F8CFF;
+  --primary-hover: #3B79F0;
+  --primary-glow: rgba(79, 140, 255, 0.18);
+  --success: #22C55E;
+  --success-glow: rgba(34, 197, 94, 0.16);
+  --warning: #F59E0B;
+  --critical: #EF4444;
+  --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --card-shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --scrollbar-track: #0a0f1d;
+  --scrollbar-thumb: #1e2d50;
+  --scrollbar-thumb-hover: #00f0ff;
+  --canvas-bg: #06080F;
+  --grid-dot: rgba(255, 255, 255, 0.035);
+  --grid-crosshair: rgba(255, 255, 255, 0.05);
+  --edge-base: rgba(148, 163, 184, 0.22);
+  --node-glow-intensity: 1;
+}
+
+.light-theme {
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-elevated: #F1F5F9;
+  --surface-secondary: #F1F5F9;
+  --border: #E2E8F0;
+  --border-subtle: #EEF2F7;
+  --text: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-tertiary: #94A3B8;
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-glow: rgba(37, 99, 235, 0.12);
+  --success: #16A34A;
+  --success-glow: rgba(22, 163, 74, 0.12);
+  --warning: #D97706;
+  --critical: #DC2626;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.10);
+  --scrollbar-track: #F1F5F9;
+  --scrollbar-thumb: #CBD5E1;
+  --scrollbar-thumb-hover: #2563EB;
+  --canvas-bg: #F8FAFC;
+  --grid-dot: rgba(15, 23, 42, 0.06);
+  --grid-crosshair: rgba(15, 23, 42, 0.08);
+  --edge-base: rgba(100, 116, 139, 0.38);
+  --node-glow-intensity: 0.5;
+}
+
+/* ─── Body ───────────────────────────────────────────────────────────────── */
 @layer base {
   body {
-    background-color: #060911;
-    color: #e2e8f0;
+    background-color: var(--bg);
+    color: var(--text);
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
-/* Sci-fi Subtle Grid Background */
+/* ─── Sci-fi Grid Background ─────────────────────────────────────────────── */
 .bg-grid-pattern {
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 32px 32px;
+}
+
+.light-theme .bg-grid-pattern {
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
 }
 
 .bg-radial-gradient {
   background: radial-gradient(circle at 50% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 60%);
 }
 
-/* Custom modern cyber scrollbar */
+.light-theme .bg-radial-gradient {
+  background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.05) 0%, transparent 60%);
+}
+
+/* ─── Theme-aware Scrollbars ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0f1d;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e2d50;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00f0ff;
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* ─── Standardized Surface Classes ───────────────────────────────────────── */
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: var(--card-shadow);
+}
+
+.surface-elevated {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.surface-panel {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.surface-glass {
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow);
+}
+
+.light-theme .glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: var(--card-shadow);
+}
+
+/* ─── Theme Transition Smoothing ─────────────────────────────────────────── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 0.18s;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Exclude animation-intensive elements from color transitions */
+canvas, svg, [class*="animate-"], [data-framer-component-type] {
+  transition: none;
 }

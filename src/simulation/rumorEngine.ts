@@ -23,7 +23,7 @@ import {
 
 export class RumorEngine {
   private society: Society;
-  private config: SimulationConfig;
+  public config: SimulationConfig;
   private rng: PRNG;
   private queue: TransmissionPriorityQueue;
 
@@ -287,10 +287,23 @@ export class RumorEngine {
     );
 
     this.state.telemetryHistory.push(roundSnapshot);
-    this.state.recentTransmissions = recentTransmissions.slice(0, 40);
+    // Sustain multi-round diffusion waves: If transmission queue empties before reaching maxRounds,
+    // active believers continue organic word-of-mouth diffusion across neighboring networks.
+    if (this.queue.size === 0 && currentRound < this.config.maxRounds) {
+      const believers = Array.from(this.state.agentStates.entries())
+        .filter(([_, st]) => st === 'BELIEVER')
+        .map(([id]) => id);
+      if (believers.length > 0 && this.state.activeRumor) {
+        const sharerCount = Math.min(believers.length, Math.max(1, Math.floor(believers.length * 0.25)));
+        for (let i = 0; i < sharerCount; i++) {
+          const believerId = believers[Math.floor(this.rng.nextFloat() * believers.length)];
+          this.scheduleOutwardTransmissions(believerId, this.state.activeRumor, currentRound);
+        }
+      }
+    }
 
-    // Termination check
-    if (this.queue.size === 0 || currentRound >= this.config.maxRounds) {
+    // Termination check: Complete when maxRounds reached
+    if (currentRound >= this.config.maxRounds) {
       this.state.status = 'completed';
     }
 
@@ -507,7 +520,7 @@ export class RumorEngine {
     if (!snapshot) return null;
 
     this.state.currentRound = snapshot.round;
-    this.state.status = snapshot.status;
+    this.state.status = snapshot.round >= this.config.maxRounds ? 'completed' : 'running';
     this.state.agentStates = new Map(snapshot.agentStates);
     this.state.infectionParents = new Map(snapshot.infectionParents);
     this.state.telemetryHistory = [...snapshot.telemetryHistory];
@@ -552,6 +565,10 @@ export class RumorEngine {
 
   public hasSnapshot(round: number): boolean {
     return this.snapshots.has(round);
+  }
+
+  public getSnapshot(round: number): SimulationSnapshot | undefined {
+    return this.snapshots.get(round);
   }
 
   /**

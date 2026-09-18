@@ -43,6 +43,7 @@ export interface CommandPaletteModalProps {
   onRunDiscovery: () => void;
   onRunValidation: () => void;
   onInjectDebunk?: () => void;
+  onReopenLanding?: () => void;
 }
 
 export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
@@ -57,6 +58,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   onRunDiscovery,
   onRunValidation,
   onInjectDebunk,
+  onReopenLanding,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -168,6 +170,16 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     });
   }
 
+  if (onReopenLanding) {
+    commands.push({
+      id: 'reopen-landing',
+      title: 'Product Reveal Tour (Aurora Landing)',
+      category: 'System',
+      icon: Sparkles,
+      action: () => { onReopenLanding(); onClose(); },
+    });
+  }
+
   const filteredCommands = commands.filter((c) =>
     c.title.toLowerCase().includes(query.toLowerCase()) ||
     c.category.toLowerCase().includes(query.toLowerCase())
@@ -201,17 +213,17 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/70 backdrop-blur-sm select-none">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/50 backdrop-blur-sm select-none">
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-xl bg-[#111114] border border-[#27272A] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className="w-full max-w-xl bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Search Input Bar */}
-            <div className="h-14 px-4 border-b border-[#27272A] flex items-center gap-3">
-              <Search className="w-4 h-4 text-[#71717A] shrink-0" />
+            <div className="h-14 px-4 border-b border-[var(--border)] flex items-center gap-3">
+              <Search className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
               <input
                 ref={inputRef}
                 type="text"
@@ -222,9 +234,9 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a command or search action..."
-                className="flex-1 bg-transparent text-[#FAFAFA] text-[14px] outline-none placeholder:text-[#71717A]"
+                className="flex-1 bg-transparent text-[var(--text)] text-[14px] outline-none placeholder:text-[var(--text-tertiary)]"
               />
-              <kbd className="px-1.5 py-0.5 rounded bg-[#18181B] border border-[#27272A] text-[10px] font-mono text-[#71717A]">
+              <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)] text-[10px] font-mono text-[var(--text-tertiary)]">
                 ESC
               </kbd>
             </div>
@@ -232,7 +244,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             {/* Results List */}
             <div className="max-h-80 overflow-y-auto p-2 space-y-1">
               {filteredCommands.length === 0 ? (
-                <div className="p-8 text-center text-[#71717A] text-[13px]">
+                <div className="p-8 text-center text-[var(--text-tertiary)] text-[13px]">
                   No matching commands found.
                 </div>
               ) : (
@@ -247,21 +259,21 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
                         isSelected
-                          ? 'bg-[#18181B] text-[#FAFAFA] border border-[#3F3F46]'
-                          : 'text-[#A1A1AA] hover:bg-[#18181B]/40 border border-transparent'
+                          ? 'bg-[var(--surface-elevated)] text-[var(--text)] border border-[var(--border-subtle)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--surface-elevated)]/40 border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-[#4F8CFF]' : 'text-[#71717A]'}`} />
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-[#4F8CFF]' : 'text-[var(--text-tertiary)]'}`} />
                         <span className="text-[13px] font-medium">{cmd.title}</span>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono text-[#71717A] uppercase">
+                        <span className="text-[10px] font-mono text-[var(--text-tertiary)] uppercase">
                           {cmd.category}
                         </span>
                         {cmd.shortcut && (
-                          <kbd className="px-1.5 py-0.5 rounded bg-[#27272A] border border-[#3F3F46] text-[10px] font-mono text-[#A1A1AA]">
+                          <kbd className="px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)] text-[10px] font-mono text-[var(--text-secondary)]">
                             {cmd.shortcut}
                           </kbd>
                         )}
@@ -273,7 +285,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             </div>
 
             {/* Bottom Helper */}
-            <div className="h-9 px-4 bg-[#18181B]/60 border-t border-[#27272A] flex items-center justify-between text-[11px] font-mono text-[#71717A]">
+            <div className="h-9 px-4 bg-[var(--surface-elevated)]/60 border-t border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-tertiary)]">
               <span>Navigate: ↑ ↓ • Select: ↵</span>
               <span>Linear Style Palette</span>
             </div>

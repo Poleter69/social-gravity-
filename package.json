@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "vite",
+    "preview": "vite preview",
     "build": "tsc && vite build",
     "test": "tsx tests/runAll.ts",
+    "setup": "node scripts/setup.js",
+    "db:seed": "tsx scripts/seed.ts",
     "inspect:facebook": "tsx src/ingestion/cli.ts inspect:facebook",
     "import:facebook": "tsx src/ingestion/cli.ts import:facebook",
     "report:facebook": "tsx src/ingestion/cli.ts report:facebook",

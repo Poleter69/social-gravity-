@@ -19,6 +19,7 @@ import {
   RelationshipDynamicsConfig,
   RelationshipType,
 } from '../types';
+import { EmotionProfile, GoEmotionLabel } from '../../nlp/types';
 import { EdgeDynamicsModel } from './edgeDynamics';
 
 export function canonicalEdgeId(u: string, v: string, directed: boolean = false): string {
@@ -135,6 +136,8 @@ export class DynamicGraph {
     currentInfluence?: number;
     trustPlaceholder?: Record<string, unknown> | null;
     emotionalPlaceholder?: Record<string, unknown> | null;
+    emotionProfile?: EmotionProfile;
+    dominantEmotion?: GoEmotionLabel;
     createdTick?: number;
     lastActiveTick?: number;
     status?: NodeStatus;
@@ -146,6 +149,8 @@ export class DynamicGraph {
       currentInfluence: params.currentInfluence ?? 0.5,
       trustPlaceholder: params.trustPlaceholder ?? null,
       emotionalPlaceholder: params.emotionalPlaceholder ?? null,
+      emotionProfile: params.emotionProfile,
+      dominantEmotion: params.dominantEmotion || params.emotionProfile?.primaryEmotion,
       createdTick: params.createdTick ?? this.currentTick,
       lastActiveTick: params.lastActiveTick ?? this.currentTick,
       status: params.status ?? 'active',

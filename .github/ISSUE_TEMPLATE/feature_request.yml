@@ -1,0 +1,39 @@
+name: 💡 Feature Request
+description: Propose a new psychological model, dataset adapter, or zero-cost optimization.
+labels: ["enhancement", "discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome community contributions and proposals!
+        **Primary Requirement:** Any proposed feature MUST conform to our zero-cost production rule ($0.00/month infrastructure budget).
+  - type: input
+    id: title
+    attributes:
+      label: Feature Title
+      placeholder: "e.g. Add Mastodon custom instance selector in Live Signal workspace"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Research Need
+      description: Is your feature request related to a specific social science problem or research workflow?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution & Architecture
+      description: Describe how the feature should work.
+    validations:
+      required: true
+  - type: checkboxes
+    id: zero_cost_check
+    attributes:
+      label: Zero-Cost Architectural Verification
+      options:
+        - label: This feature requires NO paid third-party APIs or subscription fees.
+          required: true
+        - label: This feature runs on free edge/client compute or public open-source data.
+          required: true

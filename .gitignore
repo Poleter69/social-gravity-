@@ -42,3 +42,12 @@ env/
 
 # Rust / Tauri
 src-tauri/target/
+
+# Temporary and lock files
+~$*
+*.tmp
+
+# Unrelated reference files
+sample.docx
+sample .docx
+Adaptive ML based Wireless Channel Intelligence.docx

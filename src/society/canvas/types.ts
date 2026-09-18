@@ -5,7 +5,8 @@
 
 import { Agent } from '../types/agent';
 import { AgentEpidemicState } from '../../simulation/types';
-import { GoEmotionLabel } from '../../nlp/types';
+import { GoEmotionLabel, EmotionProfile } from '../../nlp/types';
+import { SafetyClassification, SafetyCategory } from '../../safety';
 
 export type ViewMode = 'network' | 'heatmap' | 'community' | 'emotion' | 'risk' | 'bridges';
 
@@ -35,6 +36,8 @@ export interface CanvasNode {
   state?: AgentEpidemicState;
   emotion: GoEmotionLabel | string;
   emotionConfidence: number;
+  emotionProfile?: EmotionProfile;
+  narrative?: string;
   riskLevel: ThreatLevel;
   riskScore: number;
   source: NodeSource;
@@ -59,6 +62,7 @@ export interface CanvasNode {
   scaleFactor: number; // 0 to 1 for live entrance animation
   opacity: number;
   pulseTimer: number;
+  safety?: SafetyClassification;
 }
 
 export interface CanvasEdge {
@@ -66,10 +70,11 @@ export interface CanvasEdge {
   source: string;
   target: string;
   weight: number;
-  type: 'peer' | 'hierarchical' | 'bridge' | 'weak_tie';
+  type?: 'peer' | 'hierarchical' | 'bridge' | 'weak_tie' | 'thread';
   active?: boolean;
   critical?: boolean;
   isDebunk?: boolean;
+  isBridge?: boolean;
   pulseProgress?: number; // 0..1 for photon flow
   timestamp?: number;
 }
@@ -89,11 +94,12 @@ export interface FilterOptions {
   riskLevels: Set<ThreatLevel>;
   communityIds: Set<string>;
   states: Set<AgentEpidemicState | 'ALL'>;
-  timeRange: 'all' | '1m' | '1h' | '1d' | 'custom';
+  timeRange: 'all' | '1m' | '5m' | '30m' | '1h' | '1d' | 'custom';
   onlyInfluencers: boolean;
   onlyBridges: boolean;
   onlyContagion: boolean;
   searchQuery: string;
+  safetyCategories: Set<SafetyCategory>;
 }
 
 export interface CommunityHull {

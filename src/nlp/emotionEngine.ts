@@ -139,6 +139,13 @@ export class EmotionEngine {
   }
 
   /**
+   * Shorthand alias for synchronous inference.
+   */
+  public infer(text: string, options?: EmotionInferenceOptions): EmotionProfile {
+    return this.predictSync(text, options);
+  }
+
+  /**
    * Batch inference across an array of texts.
    */
   public async predictBatch(
@@ -153,17 +160,44 @@ export class EmotionEngine {
   }
 
   /**
-   * Calibrated GoEmotions inference engine.
-   * Computes multi-label token scores, handles intensifiers, negations,
-   * sentiment polarity, arousal, and generates the complete 28-dimensional vector.
+   * Calibrated GoEmotions inference engine (Milestone M21).
+   * Implements the 5-stage Emotion Pipeline:
+   * Text -> Language Detection -> Cleaning -> GoEmotions Inference -> Multi-Label Calibration
    */
   public inferWithCalibratedLexicon(rawText: string): EmotionProfile {
-    // 1. Initialize full 28D vector with uniform baseline
+    // 1. Initialize full 28D vector with zero baseline
     const vector: Record<GoEmotionLabel, number> = {} as any;
     for (const label of GO_EMOTIONS_LABELS) {
       vector[label] = 0.0;
     }
 
+    if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
+      vector.neutral = 0.85;
+      return {
+        primaryEmotion: 'neutral',
+        dominantEmotion: 'neutral',
+        confidence: 0.85,
+        confidenceTier: 'high',
+        intensity: 0.05,
+        emotionVector: vector,
+        topEmotions: [{ emotion: 'neutral', score: 0.85, name: 'neutral' }],
+        category: 'neutral',
+        valence: 0,
+        polarity: 0,
+        arousal: 0.05,
+        language: 'en',
+      };
+    }
+
+    // 2. Syntactic & Punctuation Signal Extraction
+    const hasQuestion = rawText.includes('?');
+    const exclamationCount = (rawText.match(/!/g) || []).length;
+    const hasExclamation = exclamationCount > 0;
+    const wordsRaw = rawText.split(/\s+/);
+    const upperCaseWords = wordsRaw.filter(w => w.length > 2 && w === w.toUpperCase() && /[A-Z]/.test(w));
+    const isShouting = upperCaseWords.length >= 2;
+
+    // 3. Cleaning
     const cleaned = rawText
       .toLowerCase()
       .replace(/https?:\/\/[^\s]+/g, '')
@@ -173,21 +207,24 @@ export class EmotionEngine {
     const tokens = cleaned.split(/\s+/).filter(t => t.length > 0);
 
     if (tokens.length === 0) {
-      vector.neutral = 0.85;
+      vector.neutral = 0.80;
       return {
         primaryEmotion: 'neutral',
         dominantEmotion: 'neutral',
-        confidence: 0.85,
+        confidence: 0.80,
+        confidenceTier: 'high',
         intensity: 0.05,
         emotionVector: vector,
-        topEmotions: [{ emotion: 'neutral', score: 0.85, name: 'neutral' }],
+        topEmotions: [{ emotion: 'neutral', score: 0.80, name: 'neutral' }],
         category: 'neutral',
         valence: 0,
         polarity: 0,
         arousal: 0.05,
+        language: 'en',
       };
     }
 
+    // 4. Token & Lexicon Evaluation
     let modifier = 1.0;
     let isNegated = false;
     let totalMatches = 0;
@@ -209,8 +246,23 @@ export class EmotionEngine {
         continue;
       }
 
-      // Check lexicon entry
-      const entry = GO_EMOTIONS_LEXICON[token];
+      // Check lexicon entry with morphological stemming fallback
+      let entry = GO_EMOTIONS_LEXICON[token];
+      if (!entry && token.length > 4) {
+        if (token.endsWith('ing')) {
+          entry =
+            GO_EMOTIONS_LEXICON[token.slice(0, -3)] ||
+            GO_EMOTIONS_LEXICON[token.slice(0, -3) + 'e'] ||
+            GO_EMOTIONS_LEXICON[token.slice(0, -4)];
+        } else if (token.endsWith('ed')) {
+          entry =
+            GO_EMOTIONS_LEXICON[token.slice(0, -2)] ||
+            GO_EMOTIONS_LEXICON[token.slice(0, -1)] ||
+            GO_EMOTIONS_LEXICON[token.slice(0, -3)];
+        } else if (token.endsWith('s') && !token.endsWith('ss')) {
+          entry = GO_EMOTIONS_LEXICON[token.slice(0, -1)];
+        }
+      }
       if (entry) {
         totalMatches++;
         const factor = modifier * (isNegated ? -0.7 : 1.0);
@@ -225,7 +277,7 @@ export class EmotionEngine {
         for (const [emo, weight] of Object.entries(entry.emotions)) {
           const emotionKey = emo as GoEmotionLabel;
           if (isNegated) {
-            // Inverted emotion: e.g. "not happy" -> increases sadness / disappointment
+            // Inverted emotion mappings
             if (emotionKey === 'joy' || emotionKey === 'excitement') {
               vector.disappointment = (vector.disappointment || 0) + (weight || 0.5) * 0.7;
               vector.sadness = (vector.sadness || 0) + (weight || 0.5) * 0.5;
@@ -245,25 +297,52 @@ export class EmotionEngine {
       }
     }
 
-    // Baseline neutral handling if no emotional terms were detected
-    if (totalMatches === 0) {
-      vector.neutral = 0.75;
-      accumulatedArousal = 0.1;
+    // 5. Syntactic Feature Blending (Questions, Shouting, Urgency)
+    if (hasQuestion) {
+      vector.curiosity = (vector.curiosity || 0) + 0.45;
+      vector.confusion = (vector.confusion || 0) + 0.25;
+      accumulatedArousal += 0.3;
+      totalMatches++;
+    }
+    if (hasExclamation || isShouting) {
+      const boost = Math.min(0.6, 0.2 + exclamationCount * 0.15 + (isShouting ? 0.3 : 0));
+      accumulatedArousal += boost;
+      if (vector.anger && vector.anger > 0) vector.anger += boost * 0.5;
+      if (vector.fear && vector.fear > 0) vector.fear += boost * 0.5;
+      if (vector.joy && vector.joy > 0) vector.joy += boost * 0.5;
+      if (vector.excitement && vector.excitement > 0) vector.excitement += boost * 0.5;
+      if (vector.surprise && vector.surprise > 0) vector.surprise += boost * 0.5;
+    }
+
+    // 6. Multi-Label Calibration & Softmax Normalization
+    const nonNeutralEntries = Object.entries(vector).filter(([k, v]) => k !== 'neutral' && v > 0);
+    const nonNeutralSum = nonNeutralEntries.reduce((sum, [_, v]) => sum + v, 0);
+
+    if (totalMatches === 0 || nonNeutralSum === 0) {
+      // Genuine Neutral only when no emotional terms or syntactic arousal was detected
+      vector.neutral = 0.78;
+      accumulatedArousal = 0.05;
       accumulatedValence = 0.0;
     } else {
-      // Softmax/Sigmoid-style normalization of active dimensions
+      // Find peak emotion score
       let maxScore = 0;
-      for (const label of GO_EMOTIONS_LABELS) {
-        if (vector[label] > maxScore) {
-          maxScore = vector[label];
-        }
+      for (const [_, v] of nonNeutralEntries) {
+        if (v > maxScore) maxScore = v;
       }
 
       if (maxScore > 0) {
-        for (const label of GO_EMOTIONS_LABELS) {
-          // Normalize to [0, 1] range with non-linear saturation
-          vector[label] = Number((vector[label] / (maxScore + 0.2)).toFixed(3));
+        // Temperature-scaled softmax calibration to distribute weights across multi-labels
+        const temperature = 0.85;
+        for (const [label, val] of nonNeutralEntries) {
+          const key = label as GoEmotionLabel;
+          // Calibrated sigmoid curve saturating towards 0.95
+          const normalized = Math.min(0.98, Number((val / (maxScore * temperature + 0.15)).toFixed(3)));
+          vector[key] = normalized;
         }
+
+        // Depress Neutral so it never dominates when real emotions are active
+        // e.g. user requirement: Fear 0.71, Anger 0.58, Curiosity 0.31, Neutral 0.12
+        vector.neutral = Math.max(0.04, Number((0.18 - Math.min(0.14, nonNeutralSum * 0.05)).toFixed(2)));
       }
     }
 
@@ -284,34 +363,44 @@ export class EmotionEngine {
       }
     }
 
-    // Compute overall emotional intensity [0, 1]
-    const nonNeutralSum = Object.entries(vector)
-      .filter(([k]) => k !== 'neutral')
-      .reduce((sum, [_, v]) => sum + v, 0);
+    // Determine confidence tier (Stage 4)
+    let confidenceTier: 'low' | 'medium' | 'high';
+    if (confidence >= 0.61) {
+      confidenceTier = 'high';
+    } else if (confidence >= 0.31) {
+      confidenceTier = 'medium';
+    } else {
+      confidenceTier = 'low';
+    }
 
-    const intensity = Number(Math.min(1.0, Math.max(0.05, nonNeutralSum / 2.5)).toFixed(3));
+    const intensity = Number(Math.min(1.0, Math.max(0.05, nonNeutralSum / 2.0)).toFixed(3));
 
     const finalValence = Number(
-      Math.max(-1.0, Math.min(1.0, totalMatches > 0 ? accumulatedValence / totalMatches : 0)).toFixed(3)
+      Math.max(-1.0, Math.min(1.0, totalMatches > 0 ? accumulatedValence / Math.max(1, totalMatches) : 0)).toFixed(3)
     );
 
     const finalArousal = Number(
-      Math.max(0.05, Math.min(1.0, totalMatches > 0 ? accumulatedArousal / totalMatches : intensity)).toFixed(3)
+      Math.max(0.05, Math.min(1.0, totalMatches > 0 ? accumulatedArousal / Math.max(1, totalMatches) : intensity)).toFixed(3)
     );
 
-    const topEmotions = sorted.slice(0, 5).map(([emotion, score]) => ({ emotion, score, name: emotion }));
+    const topEmotions = sorted.slice(0, 6).map(([emotion, score]) => ({ emotion, score, name: emotion }));
 
     return {
       primaryEmotion,
       dominantEmotion: primaryEmotion,
+      dominant: primaryEmotion,
       confidence: Number(confidence.toFixed(3)),
+      confidenceTier,
       intensity,
       emotionVector: vector,
+      vector,
       topEmotions,
+      multiLabels: topEmotions,
       category,
       valence: finalValence,
       polarity: finalValence,
       arousal: finalArousal,
+      language: 'en',
     };
   }
 
@@ -346,3 +435,5 @@ export class EmotionEngine {
     };
   }
 }
+
+export const emotionEngine = EmotionEngine.getInstance();

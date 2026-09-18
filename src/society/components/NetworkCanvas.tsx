@@ -35,6 +35,7 @@ import { Society } from '../types/society';
 import { Agent } from '../types/agent';
 import { AgentEpidemicState } from '../../simulation/types';
 import { CanvasNode, CanvasEdge, ViewMode, FilterOptions, TransmissionParticle, CommunityHull } from '../canvas/types';
+import { EMOTION_COLOR_MAP, GoEmotionLabel } from '../../nlp/types';
 import { IntelligentCamera } from '../canvas/camera';
 import { SpatialIndex } from '../canvas/spatialIndex';
 import { AdaptiveForceLayout } from '../canvas/adaptiveLayout';
@@ -67,7 +68,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
   simulationStates,
   patientZeroIds,
   recentTransmissions,
-  livePosts: _livePosts,
+  livePosts,
   narratives: _narratives,
   onDeployInoculation,
   onScrubToRound,
@@ -88,6 +89,8 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
   const communityCentersRef = useRef<Map<string, { x: number; y: number; color: string; name: string }>>(new Map());
   const hullsRef = useRef<CommunityHull[]>([]);
   const particlesRef = useRef<TransmissionParticle[]>([]);
+  const hasFramedRef = useRef<boolean>(false);
+  const processedPostIdsRef = useRef<Set<string>>(new Set());
 
   // Interactive UI state
   const [viewMode, setViewMode] = useState<ViewMode>('network');
@@ -122,7 +125,40 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
     onlyBridges: false,
     onlyContagion: false,
     searchQuery: '',
+    safetyCategories: new Set(),
   });
+
+  const filteredCount = useMemo(() => {
+    return nodesRef.current.filter((n) => {
+      if (filters.onlyInfluencers && !n.isInfluencer) return false;
+      if (filters.onlyBridges && !n.isBridge) return false;
+      if (filters.onlyContagion && n.state !== 'BELIEVER') return false;
+      if (filters.sources.size > 0 && !filters.sources.has(n.source)) return false;
+      if (filters.emotions.size > 0 && !filters.emotions.has(n.emotion)) return false;
+      if (filters.riskLevels.size > 0 && !filters.riskLevels.has(n.riskLevel)) return false;
+      if (filters.communityIds.size > 0 && !filters.communityIds.has(n.communityId)) return false;
+      if (filters.states.size > 0 && n.state && !filters.states.has(n.state)) return false;
+      if (filters.safetyCategories && filters.safetyCategories.size > 0) {
+        const s = n.safety;
+        if (!s || s.category === 'none') return false;
+        if (!filters.safetyCategories.has(s.category)) return false;
+      }
+      if (filters.timeRange && filters.timeRange !== 'all') {
+        const now = Date.now();
+        const durationMap: Record<string, number> = {
+          '1m': 60_000,
+          '5m': 300_000,
+          '30m': 1_800_000,
+          '1h': 3_600_000,
+          '1d': 86_400_000,
+        };
+        const maxAge = durationMap[filters.timeRange] || 3_600_000;
+        const nodeTime = n.timestamp || n.bornAt || now;
+        if (now - nodeTime > maxAge) return false;
+      }
+      return true;
+    }).length;
+  }, [filters, society]);
 
   // Sync external selectedAgent to activeSelectedNode
   useEffect(() => {
@@ -210,6 +246,153 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
     particlesRef.current = [...particlesRef.current.slice(-30), ...newParticles];
   }, [recentTransmissions]);
 
+  // 3b. React to Incoming Live Signals (M21.2 Emotion Propagation & Graph Animation)
+  useEffect(() => {
+    if (!livePosts || livePosts.length === 0) return;
+
+    let hasMutated = false;
+
+    livePosts.forEach((post: any) => {
+      if (!post || !post.id) return;
+      if (processedPostIdsRef.current.has(post.id)) return;
+      processedPostIdsRef.current.add(post.id);
+
+      const postEmotion = (post.emotion?.dominant || post.emotion?.profile?.primaryEmotion || post.emotion || 'curiosity') as GoEmotionLabel;
+      const postConfidence = post.emotion?.confidence ?? post.emotionConfidence ?? 0.82;
+      const postProfile = post.emotion?.profile;
+      const postColor = EMOTION_COLOR_MAP[postEmotion] || '#38BDF8';
+      const authorId = post.authorId || post.id;
+      const canonicalNodeId = `live-${post.platform || 'feed'}-${authorId}`;
+
+      // Match existing node by author, ID or canonical identifier
+      const existingNode = nodeMapRef.current.get(authorId) || 
+                           nodeMapRef.current.get(post.id) || 
+                           nodeMapRef.current.get(canonicalNodeId);
+
+      let targetNode: CanvasNode;
+
+      if (existingNode) {
+        existingNode.emotion = postEmotion;
+        existingNode.emotionConfidence = postConfidence;
+        if (postProfile) existingNode.emotionProfile = postProfile;
+        existingNode.color = postColor;
+        existingNode.content = post.content || existingNode.content;
+        existingNode.timestamp = post.timestamp || Date.now();
+        if (post.safety) existingNode.safety = post.safety;
+        existingNode.pulseTimer = 45; // Pulsing ring animation
+        existingNode.metrics.degree = (existingNode.metrics.degree || 1) + 1;
+        existingNode.traits.influence = Math.min(1.0, (existingNode.traits.influence || 0.5) + 0.05);
+        existingNode.radius = Math.min(14, existingNode.baseRadius + Math.log2(existingNode.metrics.degree + 1) * 1.5);
+        targetNode = existingNode;
+        hasMutated = true;
+      } else {
+        // Spawn newly arrived live signal node near corresponding community
+        const commIds = Array.from(communityCentersRef.current.keys());
+        const targetCommId = commIds.length > 0 ? commIds[Math.floor(Math.random() * commIds.length)] : 'default';
+        const commCenter = communityCentersRef.current.get(targetCommId) || { x: 0, y: 0, color: '#38BDF8', name: 'Live Stream' };
+
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 110;
+        const posX = commCenter.x + Math.cos(angle) * dist;
+        const posY = commCenter.y + Math.sin(angle) * dist;
+
+        const newNode: CanvasNode = {
+          id: canonicalNodeId,
+          label: post.authorName || `@${String(authorId).slice(0, 8)}`,
+          sublabel: `${String(post.platform || 'live').toUpperCase()} Live`,
+          communityId: targetCommId,
+          communityName: commCenter.name,
+          communityColor: commCenter.color,
+          x: posX,
+          y: posY,
+          targetX: posX,
+          targetY: posY,
+          vx: 0,
+          vy: 0,
+          radius: 6.5,
+          baseRadius: 6.5,
+          color: postColor,
+          isInfluencer: false,
+          isBridge: false,
+          isPatientZero: false,
+          emotion: postEmotion,
+          emotionConfidence: postConfidence,
+          emotionProfile: postProfile,
+          narrative: post.clusterTitle,
+          riskLevel: (post.riskScore && post.riskScore >= 0.75) ? 'critical' : (post.riskScore && post.riskScore >= 0.5) ? 'high' : (post.riskScore && post.riskScore >= 0.3) ? 'moderate' : 'low',
+          riskScore: post.riskScore || 0.25,
+          source: (post.platform as any) || 'x',
+          content: post.content,
+          timestamp: post.timestamp || Date.now(),
+          authorName: post.authorName,
+          metrics: {
+            degree: 1,
+          },
+          traits: {
+            trust: post.trustScore ?? 0.7,
+            influence: post.viralityScore ?? 0.5,
+            conformity: 0.5,
+            riskTolerance: 0.5,
+          },
+          bornAt: Date.now(),
+          scaleFactor: 0.2, // Smooth entrance scale animation
+          opacity: 1.0,
+          pulseTimer: 45, // Trigger entrance pulse
+          safety: post.safety,
+        };
+
+        nodesRef.current.push(newNode);
+        nodeMapRef.current.set(newNode.id, newNode);
+        targetNode = newNode;
+        hasMutated = true;
+      }
+
+      // Stage 5 & 6: Living Graph Conversation Threading & Directed Edge Formation
+      const parentId = post.parentId || post.parentPostId;
+      if (parentId) {
+        const canonicalParentId = `live-${post.platform || 'feed'}-${parentId}`;
+        let parentNode = nodeMapRef.current.get(parentId) ||
+                         nodeMapRef.current.get(canonicalParentId) ||
+                         nodesRef.current.find(n => n.id.includes(parentId) || (n.content && n.content.includes(parentId)));
+
+        if (parentNode && parentNode.id !== targetNode.id) {
+          const edgeId = `thread-${targetNode.id}-${parentNode.id}`;
+          const reverseEdgeId = `thread-${parentNode.id}-${targetNode.id}`;
+          const existingEdge = edgesRef.current.find(e =>
+            e.id === edgeId || e.id === reverseEdgeId ||
+            (e.source === targetNode.id && e.target === parentNode.id) ||
+            (e.source === parentNode.id && e.target === targetNode.id)
+          );
+
+          if (existingEdge) {
+            existingEdge.weight = Number((existingEdge.weight + 0.2).toFixed(2));
+            existingEdge.active = true;
+          } else {
+            const isCrossCommunity = targetNode.communityId !== parentNode.communityId;
+            if (isCrossCommunity) {
+              targetNode.isBridge = true;
+              parentNode.isBridge = true;
+            }
+            edgesRef.current.push({
+              id: edgeId,
+              source: targetNode.id,
+              target: parentNode.id,
+              weight: isCrossCommunity ? 2.0 : 1.4,
+              type: isCrossCommunity ? 'bridge' : 'thread',
+              active: true,
+              isBridge: isCrossCommunity,
+            });
+          }
+          hasMutated = true;
+        }
+      }
+    });
+
+    if (hasMutated) {
+      spatialIndexRef.current.rebuild(nodesRef.current);
+    }
+  }, [livePosts]);
+
   // 4. Keyboard Shortcuts: Spacebar for Hand Tool & Ctrl+K for Search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -280,6 +463,9 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
         if (n.scaleFactor < 1.0) {
           n.scaleFactor = Math.min(1.0, n.scaleFactor + 0.08);
         }
+        if (n.pulseTimer && n.pulseTimer > 0) {
+          n.pulseTimer--;
+        }
       });
 
       // Update transmission photon particles
@@ -292,13 +478,16 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
       });
       particlesRef.current = activeParticles;
 
+      // Check theme dynamically
+      const isLight = document.documentElement.classList.contains('light-theme');
+
       // 1. Reset screen transform & clear background
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = '#06080F'; // Obsidian deep canvas
+      ctx.fillStyle = isLight ? '#F8FAFC' : '#06080F'; // Off-white canvas in light mode, obsidian deep in dark
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // 2. Render Faint Intelligence Grid in Screen Space (Stage 14)
-      LODRenderer.renderIntelligenceGrid(ctx, canvas.width, canvas.height, camera.x, camera.y, camera.scale);
+      LODRenderer.renderIntelligenceGrid(ctx, canvas.width, canvas.height, camera.x, camera.y, camera.scale, isLight);
 
       // 3. Apply Camera World Transform
       camera.applyTransform(ctx);
@@ -317,6 +506,24 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
         if (filters.riskLevels.size > 0 && !filters.riskLevels.has(n.riskLevel)) return false;
         if (filters.communityIds.size > 0 && !filters.communityIds.has(n.communityId)) return false;
         if (filters.states.size > 0 && n.state && !filters.states.has(n.state)) return false;
+        if (filters.safetyCategories && filters.safetyCategories.size > 0) {
+          const s = n.safety;
+          if (!s || s.category === 'none') return false;
+          if (!filters.safetyCategories.has(s.category)) return false;
+        }
+        if (filters.timeRange && filters.timeRange !== 'all') {
+          const now = Date.now();
+          const durationMap: Record<string, number> = {
+            '1m': 60_000,
+            '5m': 300_000,
+            '30m': 1_800_000,
+            '1h': 3_600_000,
+            '1d': 86_400_000,
+          };
+          const maxAge = durationMap[filters.timeRange] || 3_600_000;
+          const nodeTime = n.timestamp || n.bornAt || now;
+          if (now - nodeTime > maxAge) return false;
+        }
         return true;
       });
 
@@ -328,9 +535,9 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
         });
       }
 
-      // 6. Render Thermal Field if Heatmap Mode (Stage 9)
-      if (viewMode === 'heatmap') {
-        HeatmapRenderer.renderThermalField(ctx, filteredVisibleNodes);
+      // 6. Render Thermal Field if Heatmap or Emotion Mode (Stage 9 & M21.2)
+      if (viewMode === 'heatmap' || viewMode === 'emotion') {
+        HeatmapRenderer.renderThermalField(ctx, filteredVisibleNodes, viewMode);
       }
 
       // 7. Render Edges with Intelligent Conduits (Stage 8 & 10)
@@ -341,7 +548,8 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
         activeSelectedNode?.id || null,
         hoveredNode?.id || null,
         focusNarrativeNodeIds,
-        camera.scale
+        camera.scale,
+        isLight
       );
 
       // 8. Render Transmission Photons
@@ -355,6 +563,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
         activeSelectedNode?.id || null,
         hoveredNode?.id || null,
         focusNarrativeNodeIds,
+        filters.safetyCategories,
         camera.scale,
         pulseTickRef.current
       );
@@ -371,7 +580,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
     return () => cancelAnimationFrame(animId);
   }, [viewMode, activeSelectedNode, hoveredNode, focusNarrativeNodeIds, filters]);
 
-  // 6. Responsive Canvas Resize Observer with High-DPI Scaling
+  // 6. Responsive Canvas Resize Observer with High-DPI Scaling & Initial Framing
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -383,6 +592,8 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
 
+      if (rect.width <= 0 || rect.height <= 0) return;
+
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       canvas.style.width = `${rect.width}px`;
@@ -391,6 +602,19 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.imageSmoothingEnabled = true;
+      }
+
+      // Initial framing as soon as non-zero dimensions are detected
+      if (!hasFramedRef.current && nodesRef.current.length > 0) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        nodesRef.current.forEach((n) => {
+          if (n.x < minX) minX = n.x;
+          if (n.x > maxX) maxX = n.x;
+          if (n.y < minY) minY = n.y;
+          if (n.y > maxY) maxY = n.y;
+        });
+        cameraRef.current.fitToBounds({ minX, minY, maxX, maxY }, canvas.width, canvas.height, 0.75);
+        hasFramedRef.current = true;
       }
     };
 
@@ -534,25 +758,10 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
     setFocusNarrativeTitle(`Focus: ${node.label} Contagion Tree (${focusSet.size} nodes)`);
   };
 
-  // Count filtered matches
-  const filteredCount = useMemo(() => {
-    return nodesRef.current.filter((n) => {
-      if (filters.onlyInfluencers && !n.isInfluencer) return false;
-      if (filters.onlyBridges && !n.isBridge) return false;
-      if (filters.onlyContagion && n.state !== 'BELIEVER') return false;
-      if (filters.sources.size > 0 && !filters.sources.has(n.source)) return false;
-      if (filters.emotions.size > 0 && !filters.emotions.has(n.emotion)) return false;
-      if (filters.riskLevels.size > 0 && !filters.riskLevels.has(n.riskLevel)) return false;
-      if (filters.communityIds.size > 0 && !filters.communityIds.has(n.communityId)) return false;
-      if (filters.states.size > 0 && n.state && !filters.states.has(n.state)) return false;
-      return true;
-    }).length;
-  }, [filters, nodesRef.current.length]);
-
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full overflow-hidden bg-[#06080F] select-none ${className}`}
+      className={`relative w-full h-full overflow-hidden bg-[var(--canvas-bg,#06080F)] select-none ${className}`}
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* 1. Main HTML5 Canvas Element */}
@@ -570,7 +779,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
       />
 
       {/* 2. Top-Center Floating Intelligence Toolbar (Stage 9 & View Modes) */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1 rounded-2xl bg-[#111114]/90 border border-[#27272A] shadow-2xl backdrop-blur-xl pointer-events-auto">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--surface-elevated)]/90 border border-[var(--border)] shadow-2xl backdrop-blur-xl pointer-events-auto">
         {(['network', 'heatmap', 'community', 'emotion', 'risk', 'bridges'] as ViewMode[]).map((mode) => (
           <button
             key={mode}
@@ -578,7 +787,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             className={`px-3 py-1.5 rounded-xl text-[11px] font-mono capitalize transition-all cursor-pointer flex items-center gap-1.5 ${
               viewMode === mode
                 ? 'bg-[#00F0FF]/15 text-[#00F0FF] border border-[#00F0FF]/40 font-bold shadow-sm shadow-[#00F0FF]/20'
-                : 'text-[#A1A1AA] hover:text-[#FAFAFA] border border-transparent'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text)] border border-transparent'
             }`}
           >
             {mode === 'network' && <Share2 className="w-3.5 h-3.5" />}
@@ -591,28 +800,28 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
           </button>
         ))}
 
-        <div className="w-[1px] h-5 bg-[#27272A] mx-1" />
+        <div className="w-[1px] h-5 bg-[var(--border)] mx-1" />
 
         {/* Command Search Button (Ctrl+K) */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono text-[#A1A1AA] hover:text-[#FAFAFA] hover:bg-[#18181B] transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
           title="Search graph (Ctrl+K)"
         >
           <Search className="w-3.5 h-3.5 text-[#00F0FF]" />
           <span>Search</span>
-          <span className="text-[9px] px-1 py-0.2 rounded bg-[#27272A] text-[#71717A]">⌘K</span>
+          <span className="text-[9px] px-1 py-0.2 rounded bg-[var(--surface)] border border-[var(--border)] text-[var(--text-tertiary)]">⌘K</span>
         </button>
       </div>
 
       {/* 3. Bottom-Right Floating Camera Dock (Stage 2: Camera Controls) */}
-      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 p-1 rounded-2xl bg-[#111114]/90 border border-[#27272A] shadow-2xl backdrop-blur-xl pointer-events-auto">
+      <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--surface-elevated)]/90 border border-[var(--border)] shadow-2xl backdrop-blur-xl pointer-events-auto">
         <button
           onClick={() => {
             const canvas = canvasRef.current;
             if (canvas) cameraRef.current.zoomStep(canvas.width, canvas.height, 1.25);
           }}
-          className="p-2 rounded-xl text-[#A1A1AA] hover:text-[#FAFAFA] hover:bg-[#18181B] cursor-pointer transition-colors"
+          className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface)] cursor-pointer transition-colors"
           title="Zoom In"
         >
           <ZoomIn className="w-4 h-4" />
@@ -623,17 +832,17 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             const canvas = canvasRef.current;
             if (canvas) cameraRef.current.zoomStep(canvas.width, canvas.height, 0.8);
           }}
-          className="p-2 rounded-xl text-[#A1A1AA] hover:text-[#FAFAFA] hover:bg-[#18181B] cursor-pointer transition-colors"
+          className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface)] cursor-pointer transition-colors"
           title="Zoom Out"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
 
-        <div className="w-[1px] h-5 bg-[#27272A] mx-0.5" />
+        <div className="w-[1px] h-5 bg-[var(--border)] mx-0.5" />
 
         <button
           onClick={handleFitToScreen}
-          className="p-2 rounded-xl text-[#A1A1AA] hover:text-[#FAFAFA] hover:bg-[#18181B] cursor-pointer transition-colors"
+          className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface)] cursor-pointer transition-colors"
           title="Fit Graph to Screen (75%)"
         >
           <Maximize2 className="w-4 h-4" />
@@ -644,16 +853,36 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
             const canvas = canvasRef.current;
             if (canvas) cameraRef.current.resetView(canvas.width, canvas.height);
           }}
-          className="p-2 rounded-xl text-[#A1A1AA] hover:text-[#FAFAFA] hover:bg-[#18181B] cursor-pointer transition-colors"
+          className="p-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface)] cursor-pointer transition-colors"
           title="Reset View (1.0x)"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
 
-        <div className="w-[1px] h-5 bg-[#27272A] mx-0.5" />
+        <div className="w-[1px] h-5 bg-[var(--border)] mx-0.5" />
+
+        {/* Live Window Selector (Stage 7: Live Window Controls) */}
+        <div className="flex items-center gap-1 bg-[var(--surface)] p-0.5 rounded-xl border border-[var(--border)]">
+          <span className="text-[9px] font-mono text-[var(--text-tertiary)] px-1.5 uppercase">Window</span>
+          {(['1m', '5m', '30m', '1h', 'all'] as const).map((win) => (
+            <button
+              key={win}
+              onClick={() => setFilters((prev) => ({ ...prev, timeRange: win }))}
+              className={`px-1.5 py-0.5 rounded-lg text-[10px] font-mono transition-colors cursor-pointer uppercase ${
+                filters.timeRange === win
+                  ? 'bg-[#00F0FF]/20 text-[#00F0FF] font-bold border border-[#00F0FF]/40'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text)]'
+              }`}
+            >
+              {win}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-[1px] h-5 bg-[var(--border)] mx-0.5" />
 
         {/* Real-time FPS & Node Metric Badge */}
-        <div className="px-2.5 py-1 text-[10px] font-mono text-[#71717A] flex items-center gap-2">
+        <div className="px-2.5 py-1 text-[10px] font-mono text-[var(--text-tertiary)] flex items-center gap-2">
           <span>{nodesRef.current.length} nodes</span>
           <span>•</span>
           <span className={currentFps >= 50 ? 'text-[#22C55E]' : currentFps >= 30 ? 'text-[#F59E0B]' : 'text-[#EF4444]'}>
@@ -680,7 +909,7 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
                 setFocusNarrativeNodeIds(null);
                 setFocusNarrativeTitle(null);
               }}
-              className="text-[#71717A] hover:text-white p-1 rounded cursor-pointer"
+              className="text-[var(--text-tertiary)] hover:text-[var(--text)] p-1 rounded cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -690,23 +919,23 @@ export const NetworkCanvas: React.FC<NetworkCanvasProps> = ({
 
       {/* 5. Hover Tooltip Telemetry Card (Stage 7: Hover Preview) */}
       {hoveredNode && !activeSelectedNode && (
-        <div className="absolute top-18 right-4 z-20 bg-[#111114]/95 border border-[#00F0FF]/40 rounded-xl p-3 w-64 shadow-2xl backdrop-blur-xl font-mono text-xs space-y-1.5 pointer-events-none">
-          <div className="flex items-center justify-between border-b border-[#27272A] pb-1">
+        <div className="absolute top-18 right-4 z-20 bg-[var(--surface-elevated)]/95 border border-[var(--border)] rounded-xl p-3 w-64 shadow-2xl backdrop-blur-xl font-mono text-xs space-y-1.5 pointer-events-none">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-1">
             <span className="text-[#00F0FF] font-bold">{hoveredNode.id}</span>
             <span className="text-[10px] uppercase font-bold text-[#F59E0B]">
               {hoveredNode.isPatientZero ? 'PATIENT ZERO' : hoveredNode.isInfluencer ? 'INFLUENCER' : hoveredNode.isBridge ? 'BRIDGE' : 'MEMBER'}
             </span>
           </div>
           <div>
-            <div className="text-white font-sans font-bold">{hoveredNode.label}</div>
-            <div className="text-[#71717A] text-[11px]">{hoveredNode.sublabel || hoveredNode.communityName}</div>
+            <div className="text-[var(--text)] font-sans font-bold">{hoveredNode.label}</div>
+            <div className="text-[var(--text-tertiary)] text-[11px]">{hoveredNode.sublabel || hoveredNode.communityName}</div>
           </div>
-          <div className="pt-1 border-t border-[#27272A] flex items-center justify-between text-[11px]">
-            <span className="text-[#71717A]">Affect:</span>
+          <div className="pt-1 border-t border-[var(--border)] flex items-center justify-between text-[11px]">
+            <span className="text-[var(--text-tertiary)]">Affect:</span>
             <span className="font-bold text-[#A855F7] uppercase">{hoveredNode.emotion}</span>
           </div>
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-[#71717A]">Degree / Trust:</span>
+            <span className="text-[var(--text-tertiary)]">Degree / Trust:</span>
             <span>
               <strong className="text-[#00F0FF]">{hoveredNode.metrics.degree}</strong> / <strong className="text-[#10B981]">{(hoveredNode.traits.trust * 100).toFixed(0)}%</strong>
             </span>

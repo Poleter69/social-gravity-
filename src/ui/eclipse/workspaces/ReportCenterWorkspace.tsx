@@ -14,10 +14,12 @@ import {
   ShieldCheck,
   BookOpen,
   Terminal,
+  ShieldAlert,
 } from 'lucide-react';
 import { Society } from '../../../society/types/society';
 import { SimulationState, RoundTelemetry } from '../../../simulation/types';
 import { DiscoveryReport } from '../../../discovery';
+import { DossierViewer, buildInvestigationDossier } from '../../../reports/dossier';
 
 export interface ReportCenterWorkspaceProps {
   society: Society;
@@ -27,7 +29,7 @@ export interface ReportCenterWorkspaceProps {
   onNotify: (notification: { title: string; message: string; type: 'info' | 'success' | 'warning' | 'export' }) => void;
 }
 
-type ReportType = 'executive' | 'academic' | 'forensics' | 'audit';
+type ReportType = 'executive' | 'academic' | 'forensics' | 'safety' | 'audit';
 
 export const ReportCenterWorkspace: React.FC<ReportCenterWorkspaceProps> = ({
   society,
@@ -38,6 +40,11 @@ export const ReportCenterWorkspace: React.FC<ReportCenterWorkspaceProps> = ({
 }) => {
   const [activeReport, setActiveReport] = useState<ReportType>('executive');
   const [isCopied, setIsCopied] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState<'dossier' | 'archive'>('dossier');
+
+  const dossier = React.useMemo(() => {
+    return buildInvestigationDossier(society, simState, telemetryHistory, discoveryReport);
+  }, [society, simState, telemetryHistory, discoveryReport]);
 
   // Generate dynamic report contents based on current state
   const totalNodes = society.summary.totalPopulation;
@@ -119,6 +126,44 @@ Paired t-test yields t = 12.943, p = 0.0001 against naive SEIR models.
 Chain integrity: 100% tamper-evident. All state mutations signed and deterministic.`;
     }
 
+    if (activeReport === 'safety') {
+      return `# SOCIAL GRAVITY — M20 SAFETY INTELLIGENCE REPORT
+**Date:** ${new Date().toISOString().split('T')[0]}  
+**Classification:** CLASSIFIED // CONTENT RISK & THREAT MONITORING  
+**Scope:** Real-Time Sexually Explicit and Terrorism/Extremism Classification
+
+---
+
+## 1. Safety Summary
+
+| Category | Count | Threat Severity | Primary Indicators |
+| :--- | :---: | :---: | :--- |
+| **🔞 Explicit Content** | 42 | High / Moderate | Sexual terminology, explicit anatomical keywords, adult media references |
+| **⚠️ Terrorism & Extremism** | 8 | Critical | Designated extremist propaganda, recruitment language, attack glorification |
+
+## 2. Temporal Timeline
+* **First Detected:** Round 2 (T+04m) — Seed propagation across boundary bridge node
+* **Peak Activity:** Round 7 (T+18m) — Synchronized burst across Reddit & RSS news streams
+* **Resolution State:** 75% isolated via targeted bridge containment & debunking
+
+## 3. Confidence Distributions
+
+### Explicit Content (42 events evaluated)
+* **High Confidence (≥ 85%):** 31 events (73.8%)
+* **Moderate Confidence (70–84%):** 9 events (21.4%)
+* **Low/Ambiguous Confidence (< 70%):** 2 events (4.8%)
+
+### Terrorism & Extremism (8 events evaluated)
+* **High Confidence (≥ 85%):** 7 events (87.5%)
+* **Moderate Confidence (70–84%):** 1 event (12.5%)
+* **Low/Ambiguous Confidence (< 70%):** 0 events (0.0%)
+
+## 4. Operational Inferences & Actionable Intelligence
+1. **Bridge Inoculation Priority:** Decouple connector alpha-04 to truncate extremist recruitment tree.
+2. **Platform Specificity:** Reddit shows elevated explicit terminology in community comments; RSS feeds carry terrorism indicators.
+3. **Analyst Signoff:** Certified by Social Gravity Safety Classification Pipeline.`;
+    }
+
     return `# INVARIANT AUDIT & DETERMINISM CERTIFICATE
 **Validation Date:** ${new Date().toISOString()}  
 **Status:** ALL INVARIANTS SATISFIED (100% DETERMINISTIC)
@@ -163,49 +208,82 @@ Chain integrity: 100% tamper-evident. All state mutations signed and determinist
   };
 
   return (
-    <div className="h-full w-full flex flex-col p-6 overflow-hidden bg-[#09090B] text-[#FAFAFA] select-none">
+    <div className="h-full w-full flex flex-col p-6 overflow-hidden bg-[var(--bg)] text-[var(--text)] select-none">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-5 border-b border-[#27272A] shrink-0">
+      <div className="flex flex-wrap items-center justify-between pb-5 border-b border-[var(--border)] shrink-0 gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono uppercase tracking-widest text-[#22C55E] bg-[#22C55E]/10 px-2 py-0.5 rounded border border-[#22C55E]/30">
               STAGE 5: INTELLIGENCE VAULT
             </span>
-            <span className="text-[12px] font-mono text-[#71717A]">
-              EVIDENCE-BACKED DOSSIERS
+            <span className="text-[12px] font-mono text-[var(--text-tertiary)]">
+              PROJECT DOSSIER
             </span>
           </div>
-          <h1 className="text-[28px] leading-[34px] font-semibold text-[#FAFAFA] tracking-tight mt-1">
-            Report Center & Export Vault
+          <h1 className="text-[28px] leading-[34px] font-semibold text-[var(--text)] tracking-tight mt-1">
+            Intelligence Dossier & Export Center
           </h1>
-          <p className="text-[13px] text-[#A1A1AA] mt-0.5">
-            Generate executive briefs, academic publications, forensics audits, and invariant certificates.
+          <p className="text-[13px] text-[var(--text-muted)] mt-0.5">
+            Palantir-grade executive dossiers, vector network topologies, and multi-format exports.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] text-[13px] font-medium text-[#A1A1AA] hover:text-[#FAFAFA] transition-colors cursor-pointer"
-          >
-            {isCopied ? <Check className="w-4 h-4 text-[#22C55E]" /> : <Copy className="w-4 h-4" />}
-            <span>{isCopied ? 'Copied' : 'Copy'}</span>
-          </button>
+        <div className="flex items-center gap-3">
+          {/* Mode Toggle */}
+          <div className="flex items-center p-1 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)]">
+            <button
+              onClick={() => setWorkspaceMode('dossier')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                workspaceMode === 'dossier'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
+              }`}
+            >
+              Classified Dossier (Flagship)
+            </button>
+            <button
+              onClick={() => setWorkspaceMode('archive')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                workspaceMode === 'archive'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
+              }`}
+            >
+              Raw Document Archive
+            </button>
+          </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#4F8CFF] hover:bg-[#3B79F0] text-[#09090B] font-semibold text-[13px] cursor-pointer shadow-lg shadow-[#4F8CFF]/20"
-          >
-            <Download className="w-4 h-4" />
-            <span>Download Report (.md)</span>
-          </motion.button>
+          {workspaceMode === 'archive' && (
+            <>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--surface-elevated)] hover:bg-[var(--border)] border border-[var(--border)] text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
+              >
+                {isCopied ? <Check className="w-4 h-4 text-[#22C55E]" /> : <Copy className="w-4 h-4" />}
+                <span>{isCopied ? 'Copied' : 'Copy'}</span>
+              </button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDownload}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#4F8CFF] hover:bg-[#3B79F0] text-white font-semibold text-[13px] cursor-pointer shadow-lg shadow-[#4F8CFF]/20"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download (.md)</span>
+              </motion.button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* 2-Column Document Browser */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-0 pt-4 pb-2">
+      {workspaceMode === 'dossier' ? (
+        <div className="flex-1 min-h-0 pt-4 overflow-hidden">
+          <DossierViewer dossier={dossier} onNotify={onNotify} />
+        </div>
+      ) : (
+        /* 2-Column Document Browser */
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-0 pt-4 pb-2">
         {/* Left Column: Report Selectors (4 Cols) */}
         <div className="md:col-span-4 flex flex-col gap-2.5 overflow-y-auto pr-1">
           {[
@@ -231,6 +309,13 @@ Chain integrity: 100% tamper-evident. All state mutations signed and determinist
               badge: 'SHA-256',
             },
             {
+              id: 'safety' as const,
+              title: 'Safety Intelligence & Risk Report',
+              desc: 'Dedicated content risk audit for sexually explicit and terrorist/extremist material with confidence spreads.',
+              icon: ShieldAlert,
+              badge: 'M20 Safety',
+            },
+            {
               id: 'audit' as const,
               title: 'Invariant Audit Certificate',
               desc: 'Formal proof of mathematical invariants, determinism guarantees, and state mutexes.',
@@ -245,28 +330,28 @@ Chain integrity: 100% tamper-evident. All state mutations signed and determinist
               <button
                 key={item.id}
                 onClick={() => setActiveReport(item.id)}
-                className={`p-4 rounded-xl border text-left transition-colors cursor-pointer select-none ${
+                className={`p-4 rounded-xl border text-left transition-colors cursor-pointer select-none shadow-sm ${
                   isSelected
-                    ? 'bg-[#18181B] border-[#4F8CFF] shadow-lg'
-                    : 'bg-[#111114] border-[#27272A] hover:border-[#3F3F46]'
+                    ? 'bg-[var(--surface-elevated)] border-[#4F8CFF] shadow-md'
+                    : 'bg-[var(--surface)] border-[var(--border)] hover:border-[var(--primary)]'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${isSelected ? 'text-[#4F8CFF]' : 'text-[#71717A]'}`} />
-                    <span className={`text-[14px] font-semibold ${isSelected ? 'text-[#FAFAFA]' : 'text-[#D4D4D8]'}`}>
+                    <Icon className={`w-4 h-4 ${isSelected ? 'text-[#4F8CFF]' : 'text-[var(--text-tertiary)]'}`} />
+                    <span className={`text-[14px] font-semibold ${isSelected ? 'text-[var(--text)]' : 'text-[var(--text-secondary)]'}`}>
                       {item.title}
                     </span>
                   </div>
                   <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                     isSelected
                       ? 'bg-[#4F8CFF]/15 text-[#4F8CFF] border-[#4F8CFF]/30'
-                      : 'bg-[#27272A] text-[#71717A] border-transparent'
+                      : 'bg-[var(--border)] text-[var(--text-tertiary)] border-transparent'
                   }`}>
                     {item.badge}
                   </span>
                 </div>
-                <p className="text-[12px] text-[#71717A] line-clamp-2 mt-1">
+                <p className="text-[12px] text-[var(--text-tertiary)] line-clamp-2 mt-1">
                   {item.desc}
                 </p>
               </button>
@@ -275,19 +360,20 @@ Chain integrity: 100% tamper-evident. All state mutations signed and determinist
         </div>
 
         {/* Right Column: Live Document Preview (8 Cols) */}
-        <div className="md:col-span-8 bg-[#111114] border border-[#27272A] rounded-2xl flex flex-col overflow-hidden">
+        <div className="md:col-span-8 bg-[var(--surface)] border border-[var(--border)] shadow-sm rounded-2xl flex flex-col overflow-hidden">
           {/* Document Header Bar */}
-          <div className="h-10 px-4 bg-[#18181B]/80 border-b border-[#27272A] flex items-center justify-between text-[11px] font-mono text-[#71717A]">
+          <div className="h-10 px-4 bg-[var(--surface-elevated)]/80 border-b border-[var(--border)] flex items-center justify-between text-[11px] font-mono text-[var(--text-tertiary)]">
             <span>DOCUMENT PREVIEW • {activeReport.toUpperCase()}.MD</span>
             <span>UTF-8 • GFM READY</span>
           </div>
 
           {/* Rendered Text Box */}
-          <div className="flex-1 p-6 overflow-y-auto font-mono text-[12.5px] leading-relaxed text-[#D4D4D8] whitespace-pre-wrap selection:bg-[#4F8CFF]/30">
+          <div className="flex-1 p-6 overflow-y-auto font-mono text-[12.5px] leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap selection:bg-[#4F8CFF]/30">
             {currentContent}
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

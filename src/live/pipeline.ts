@@ -10,18 +10,23 @@
  * Target Latency: < 1.5s total (Sub-10ms in-memory execution)
  */
 
-import { LivePost, LivePlatform } from './types';
+import { LivePost, LivePlatform, LiveEvent } from './types';
 import { DedupStore } from './dedup';
 import { EmotionEngine } from '../nlp/emotionEngine';
 import { EmotionProfile, GoEmotionLabel } from '../nlp/types';
+import { SafetyClassifier, SafetyClassification } from '../safety';
+import { hashAuthorId } from './authorHash';
 
 export interface ProcessedLivePost {
   id: string;
   platform: LivePlatform;
   authorId: string;
+  authorHash: string;
   authorName: string;
   content: string;
   timestamp: number;
+  url?: string;
+  safety: SafetyClassification;
   language: {
     code: string;
     confidence: number;
@@ -35,9 +40,11 @@ export interface ProcessedLivePost {
   clusterTitle: string;
   trustScore: number; // 0 (untrusted) to 1.0 (verified/organic)
   riskScore: number; // 0 (benign) to 1.0 (high disinformation/panic risk)
+  viralityScore: number; // 0 to 1.0
   isBotSuspect: boolean;
   parentPostId?: string;
   processingLatencyMs: number;
+  canonical?: LiveEvent;
 }
 
 export interface LiveClusterState {
@@ -55,15 +62,25 @@ export interface LiveClusterState {
 }
 
 export class LiveProcessingPipeline {
+  private static instance?: LiveProcessingPipeline;
   private dedupStore: DedupStore;
   private emotionEngine: EmotionEngine;
+  private safetyClassifier: SafetyClassifier;
   private clusters: Map<string, LiveClusterState> = new Map();
   private userPostingHistory: Map<string, number[]> = new Map(); // authorId -> timestamps
   private processedListeners: Array<(post: ProcessedLivePost) => void> = [];
 
+  public static getInstance(dedupWindowMs?: number): LiveProcessingPipeline {
+    if (!LiveProcessingPipeline.instance) {
+      LiveProcessingPipeline.instance = new LiveProcessingPipeline(dedupWindowMs);
+    }
+    return LiveProcessingPipeline.instance;
+  }
+
   constructor(dedupWindowMs: number = 300_000) {
     this.dedupStore = new DedupStore(dedupWindowMs);
     this.emotionEngine = EmotionEngine.getInstance();
+    this.safetyClassifier = SafetyClassifier.getInstance();
   }
 
   public onProcessed(listener: (post: ProcessedLivePost) => void): void {
@@ -91,21 +108,49 @@ export class LiveProcessingPipeline {
     const vector = emotionProfile.emotionVector || {};
     const emotionConfidence = vector[dominantEmotion] ?? emotionProfile.confidence ?? 0.5;
 
-    // 4. Narrative Clustering
+    // 4. M21 Content Safety Layer (Hate, Explicit, Terrorism, Violence, Harassment)
+    const safety = post.safety || this.safetyClassifier.classify(post.content, post.metadata);
+
+    // 5. Narrative Clustering
     const { clusterId, clusterTitle } = this.assignCluster(post, dominantEmotion);
 
-    // 5. Trust & Risk Scoring
-    const { trustScore, riskScore, isBotSuspect } = this.scoreTrustAndRisk(post, emotionProfile);
+    // 6. Trust & Risk Scoring (Risk amplified across all safety pillars)
+    let { trustScore, riskScore, isBotSuspect } = this.scoreTrustAndRisk(post, emotionProfile);
+    if (safety.category === 'terrorism') {
+      riskScore = Math.min(1.0, Math.max(riskScore, safety.confidence));
+    } else if (safety.category === 'violence') {
+      riskScore = Math.min(1.0, Math.max(riskScore, safety.confidence * 0.95));
+    } else if (safety.category === 'hate') {
+      riskScore = Math.min(1.0, Math.max(riskScore, safety.confidence * 0.85));
+    } else if (safety.category === 'harassment') {
+      riskScore = Math.min(1.0, Math.max(riskScore, safety.confidence * 0.80));
+    } else if (safety.category === 'explicit') {
+      riskScore = Math.min(1.0, Math.max(riskScore, safety.confidence * 0.70));
+    }
 
-    // 6. Assemble Processed Signal
+    // 7. Compute Virality Velocity Score
+    const textLen = post.content.length;
+    const arousal = emotionProfile.arousal || 0.1;
+    const safetyWeight = safety.confidence > 0 ? safety.confidence * 0.35 : 0;
+    const viralityScore = Number(
+      Math.min(1.0, Math.max(0.05, (textLen > 60 ? 0.25 : 0.1) + arousal * 0.45 + safetyWeight)).toFixed(2)
+    );
+
+    // 8. Hash Author (Never expose raw identifier internally)
+    const authorHash = hashAuthorId(post.authorId);
+
+    // 9. Assemble Processed Signal
     const latency = performance.now() - startTime;
     const processed: ProcessedLivePost = {
       id: post.id,
       platform: post.platform,
       authorId: post.authorId,
+      authorHash,
       authorName: post.authorName,
       content: post.content,
       timestamp: post.timestamp,
+      url: post.url,
+      safety,
       language,
       emotion: {
         dominant: dominantEmotion,
@@ -116,15 +161,37 @@ export class LiveProcessingPipeline {
       clusterTitle,
       trustScore,
       riskScore,
+      viralityScore,
       isBotSuspect,
       parentPostId: post.parentId,
       processingLatencyMs: Number(latency.toFixed(2)),
     };
 
+    processed.canonical = this.toCanonicalLiveEvent(processed);
+
     // Notify subscribers
     this.processedListeners.forEach(listener => listener(processed));
 
     return processed;
+  }
+
+  /**
+   * Converts processed live post into canonical LiveEvent.
+   */
+  public toCanonicalLiveEvent(post: ProcessedLivePost): LiveEvent {
+    return {
+      id: post.id,
+      source: post.platform,
+      timestamp: post.timestamp,
+      authorHash: post.authorHash,
+      text: post.content,
+      url: post.url,
+      language: post.language.code,
+      emotionProfile: post.emotion.profile,
+      safetyProfile: post.safety,
+      narrativeCluster: post.clusterTitle,
+      viralityScore: post.viralityScore,
+    };
   }
 
   /**

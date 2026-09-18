@@ -93,24 +93,24 @@ export const EMOTION_COLOR_MAP: Record<GoEmotionLabel, string> = {
 
   // Negative emotions (reds, crimsons, oranges, dark purples)
   anger: '#EF4444',
-  fear: '#8B5CF6',
+  fear: '#F97316',
   sadness: '#6366F1',
   disgust: '#78716C',
-  confusion: '#F97316',
+  confusion: '#FB923C',
   annoyance: '#F87171',
   disappointment: '#94A3B8',
-  embarrassment: '#FB923C',
+  embarrassment: '#FDBA74',
   grief: '#475569',
   nervousness: '#A855F7',
   remorse: '#64748B',
 
   // Social & Epistemic emotions (cyans, blues, indigos, violets)
-  admiration: '#3B82F6',
+  admiration: '#38BDF8',
   approval: '#0EA5E9',
   disapproval: '#EA580C',
   curiosity: '#06B6D4',
   realization: '#818CF8',
-  surprise: '#EAB308',
+  surprise: '#8B5CF6',
 
   // Neutral
   neutral: '#64748B',
@@ -119,14 +119,19 @@ export const EMOTION_COLOR_MAP: Record<GoEmotionLabel, string> = {
 export interface EmotionProfile {
   primaryEmotion: GoEmotionLabel;
   dominantEmotion?: GoEmotionLabel;
+  dominant?: GoEmotionLabel;
   confidence: number; // [0, 1]
   intensity: number; // Overall emotional arousal/magnitude [0, 1]
   emotionVector: Record<GoEmotionLabel, number>; // Full 28-dimensional normalized scores
+  vector?: Record<GoEmotionLabel, number>;
   topEmotions: Array<{ emotion: GoEmotionLabel; score: number; name?: GoEmotionLabel }>;
+  multiLabels?: Array<{ emotion: GoEmotionLabel; score: number; name?: GoEmotionLabel }>;
   category: EmotionCategory;
   valence: number; // [-1.0 (highly negative) to +1.0 (highly positive)]
   polarity?: number; // [-1.0 to +1.0] alias for valence
   arousal: number; // [0.0 (quiescent/calm) to 1.0 (frenetic/explosive)]
+  confidenceTier?: 'low' | 'medium' | 'high';
+  language?: string;
 }
 
 export interface CommentEmotion {

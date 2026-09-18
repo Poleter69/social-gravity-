@@ -58,6 +58,22 @@ export class YouTubeConnector implements LiveConnector {
     return this.getStatus();
   }
 
+  public getHealth(): import('./types').ConnectorHealth {
+    const status = this.state.status;
+    return {
+      id: 'youtube',
+      platform: 'youtube',
+      status,
+      healthy: status === 'live' || status === 'connected',
+      latencyMs: this.state.latencyMs || 20,
+      lastEventAt: this.state.lastPollAt,
+      errorCount: status === 'error' ? 1 : 0,
+      successRate: 1.0,
+      itemsIngested: this.state.itemsIngested,
+      details: 'YouTube Data API Live Comments Ingestion',
+    };
+  }
+
   private updateStatus(status: ConnectorState['status'], extra?: Partial<ConnectorState>): void {
     this.state = { ...this.state, status, ...extra };
     this.eventHandlers.forEach(h =>

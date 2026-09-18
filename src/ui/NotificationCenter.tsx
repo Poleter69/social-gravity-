@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Social Gravity - Notification Center
  * Shows live alerts, replay milestones, connector status, and export completions.
  */
@@ -41,7 +41,7 @@ function colorFor(type: NotificationType): string {
     case "error":   return "border-red-500/30 bg-red-500/10";
     case "connector": return "border-blue-500/30 bg-blue-500/10";
     case "export":  return "border-purple-500/30 bg-purple-500/10";
-    default:        return "border-slate-500/30 bg-slate-800/50";
+    default:        return "border-slate-500/30 bg-[var(--surface)]";
   }
 }
 
@@ -84,7 +84,7 @@ export const NotificationCenter: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => { setIsOpen(o => !o); setUnreadCount(0); }}
-        className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-gravity-700 transition-colors"
+        className="relative p-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--surface-elevated)] transition-colors cursor-pointer"
         title="Notification Center (Ctrl+N)"
       >
         <Bell className="w-5 h-5" />
@@ -96,29 +96,29 @@ export const NotificationCenter: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl border border-gravity-600 bg-gravity-900 shadow-2xl z-50">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gravity-700">
-            <span className="text-sm font-semibold text-white">Notifications</span>
+        <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-2xl z-50 text-[var(--text)]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+            <span className="text-sm font-semibold text-[var(--text)]">Notifications</span>
             <div className="flex items-center gap-2">
               {notifications.length > 0 && (
-                <button onClick={clearAll} className="text-xs text-slate-400 hover:text-white">Clear all</button>
+                <button onClick={clearAll} className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text)] cursor-pointer">Clear all</button>
               )}
-              <button onClick={() => setIsOpen(false)}><X className="w-4 h-4 text-slate-400" /></button>
+              <button onClick={() => setIsOpen(false)} className="cursor-pointer"><X className="w-4 h-4 text-[var(--text-tertiary)] hover:text-[var(--text)]" /></button>
             </div>
           </div>
           {notifications.length === 0 ? (
-            <div className="py-8 text-center text-slate-500 text-sm">No notifications</div>
+            <div className="py-8 text-center text-[var(--text-tertiary)] text-sm">No notifications</div>
           ) : (
-            <div className="divide-y divide-gravity-700/50">
+            <div className="divide-y divide-[var(--border)]">
               {notifications.map(n => (
                 <div key={n.id} className={`flex gap-3 p-3 border-l-2 ${colorFor(n.type)}`}>
                   <div className="mt-0.5 shrink-0">{iconFor(n.type)}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-white truncate">{n.title}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{n.message}</div>
-                    <div className="text-[9px] text-slate-600 mt-1">{new Date(n.timestamp).toLocaleTimeString()}</div>
+                    <div className="text-xs font-semibold text-[var(--text)] truncate">{n.title}</div>
+                    <div className="text-[10px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">{n.message}</div>
+                    <div className="text-[9px] text-[var(--text-tertiary)] mt-1">{new Date(n.timestamp).toLocaleTimeString()}</div>
                   </div>
-                  <button onClick={() => dismiss(n.id)} className="shrink-0 mt-0.5 text-slate-600 hover:text-slate-300">
+                  <button onClick={() => dismiss(n.id)} className="shrink-0 mt-0.5 text-[var(--text-tertiary)] hover:text-[var(--text)] cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </div>

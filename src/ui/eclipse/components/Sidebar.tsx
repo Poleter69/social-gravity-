@@ -59,12 +59,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         setIsExpanded(false);
         setHoveredItem(null);
       }}
-      className="relative h-screen bg-[#111114] border-r border-[#27272A] flex flex-col justify-between select-none z-40 shrink-0 overflow-hidden"
+      className="relative h-screen border-r flex flex-col justify-between select-none z-40 shrink-0 overflow-hidden"
+      style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
     >
       {/* Top: Logo & Branding */}
       <div>
-        <div className="h-14 flex items-center px-4.5 gap-3 border-b border-[#27272A] overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-[#18181B] border border-[#27272A] flex items-center justify-center shrink-0 text-[#4F8CFF] shadow-[0_0_12px_rgba(79,140,255,0.15)]">
+        <div className="h-14 flex items-center px-4.5 gap-3 border-b overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[#4F8CFF]"
+            style={{
+              background: 'var(--surface-elevated)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 0 12px rgba(79,140,255,0.15)',
+            }}
+          >
             <Activity className="w-4 h-4" />
           </div>
           <AnimatePresence>
@@ -76,10 +84,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 transition={{ duration: 0.16 }}
                 className="whitespace-nowrap overflow-hidden"
               >
-                <div className="text-[14px] font-semibold tracking-tight text-[#FAFAFA]">
+                <div className="text-[14px] font-semibold tracking-tight text-[var(--text)]">
                   Social Gravity
                 </div>
-                <div className="text-[10px] font-mono tracking-widest text-[#71717A] uppercase">
+                <div className="text-[10px] font-mono tracking-widest text-[var(--text-tertiary)] uppercase">
                   v3.0.0 Workstation
                 </div>
               </motion.div>
@@ -107,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {isActive && (
                   <motion.div
                     layoutId="activeNavPill"
-                    className="absolute inset-0 rounded-xl bg-[#18181B] border border-[#27272A] shadow-md"
+                    className="absolute inset-0 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border)] shadow-sm"
                     transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                   />
                 )}
@@ -119,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.22 }}
-                    className="absolute inset-0 rounded-xl bg-[#18181B]/70 border border-[#27272A]/80 shadow-[0_0_16px_-2px_rgba(79,140,255,0.2)]"
+                    className="absolute inset-0 rounded-xl bg-[var(--surface-elevated)]/70 border border-[var(--border)]/80 shadow-[0_0_16px_-2px_rgba(79,140,255,0.15)]"
                   />
                 )}
 
@@ -156,8 +164,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       isActive
                         ? 'text-[#4F8CFF]'
                         : isHovered
-                        ? 'text-[#FAFAFA]'
-                        : 'text-[#A1A1AA]'
+                        ? 'text-[var(--text)]'
+                        : 'text-[var(--text-muted)]'
                     }`}
                   />
                 </motion.div>
@@ -179,15 +187,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div
                           className={`text-[13px] leading-tight transition-colors duration-200 ${
                             isActive
-                              ? 'font-semibold text-[#FAFAFA]'
+                              ? 'font-semibold text-[var(--text)]'
                               : isHovered
-                              ? 'font-medium text-[#FAFAFA]'
-                              : 'font-normal text-[#A1A1AA]'
+                              ? 'font-medium text-[var(--text)]'
+                              : 'font-normal text-[var(--text-muted)]'
                           }`}
                         >
                           {item.label}
                         </div>
-                        <div className="text-[10px] text-[#71717A] leading-tight mt-0.5">
+                        <div className="text-[10px] text-[var(--text-tertiary)] leading-tight mt-0.5">
                           {item.subtitle}
                         </div>
                       </div>
@@ -213,12 +221,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Area: Connector Health & Profile */}
-      <div className="p-2.5 border-t border-[#27272A] space-y-2">
+      <div className="p-2.5 border-t border-[var(--border)] space-y-2">
         {/* Stream Health Mini Indicator */}
-        <div className="px-2 py-1.5 rounded-lg bg-[#18181B]/60 border border-[#27272A] flex items-center gap-2">
+        <div className="px-2 py-1.5 rounded-lg bg-[var(--surface-elevated)]/60 border border-[var(--border)] flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full shrink-0 ${
-              isStreaming ? 'bg-[#22C55E] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-[#71717A]'
+              isStreaming ? 'bg-[#22C55E] animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-[var(--text-tertiary)]'
             }`}
           />
           <AnimatePresence>
@@ -228,7 +236,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.16 }}
-                className="text-[11px] font-mono text-[#A1A1AA] truncate whitespace-nowrap"
+                className="text-[11px] font-mono text-[var(--text-muted)] truncate whitespace-nowrap"
               >
                 {isStreaming ? 'Reddit + RSS Ingesting' : 'Stream Paused'}
               </motion.div>
@@ -237,8 +245,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Analyst Profile */}
-        <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[#71717A]">
-          <div className="w-7 h-7 rounded-full bg-[#18181B] border border-[#27272A] flex items-center justify-center shrink-0 text-[#A1A1AA]">
+        <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[var(--text-tertiary)]">
+          <div className="w-7 h-7 rounded-full bg-[var(--surface-elevated)] border border-[var(--border)] flex items-center justify-center shrink-0 text-[var(--text-muted)]">
             <User className="w-3.5 h-3.5" />
           </div>
           <AnimatePresence>
@@ -250,10 +258,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 transition={{ duration: 0.16 }}
                 className="overflow-hidden whitespace-nowrap text-left truncate"
               >
-                <div className="text-[12px] font-medium text-[#FAFAFA] truncate">
+                <div className="text-[12px] font-medium text-[var(--text)] truncate">
                   Lead Analyst
                 </div>
-                <div className="text-[10px] font-mono text-[#71717A] truncate">
+                <div className="text-[10px] font-mono text-[var(--text-tertiary)] truncate">
                   Palantir Foundry Clearance
                 </div>
               </motion.div>

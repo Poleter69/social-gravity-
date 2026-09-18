@@ -8,7 +8,8 @@
 
 import { Society } from '../types/society';
 import { CanvasNode, CanvasEdge, ViewportBounds } from './types';
-import { GoEmotionLabel } from '../../nlp/types';
+import { GoEmotionLabel, EMOTION_COLOR_MAP } from '../../nlp/types';
+import { synthesizeEmotionProfileFromTraits } from '../../psychology/defaults';
 import { AgentEpidemicState } from '../../simulation/types';
 
 export interface LayoutOptions {
@@ -102,16 +103,11 @@ export class AdaptiveForceLayout {
       const scaleAdjust = totalAgents > 2500 ? 0.6 : totalAgents > 800 ? 0.8 : 1.0;
       const radius = Math.max(3.0, baseRadius * scaleAdjust);
 
-      // Emotion profile resolution
-      const emotionProfile = agent.psychology.emotionProfile;
-      const dominantEmotion: GoEmotionLabel = emotionProfile?.primaryEmotion ?? (
-        agent.psychology.emotions.fear >= 0.45 ? 'fear' :
-        agent.psychology.emotions.anger && agent.psychology.emotions.anger >= 0.4 ? 'anger' :
-        agent.state.emotionalState === 'anxious' ? 'fear' :
-        agent.state.emotionalState === 'indignant' ? 'anger' :
-        agent.state.emotionalState === 'optimistic' ? 'joy' : 'neutral'
-      );
-      const emotionConf = emotionProfile?.confidence ?? 0.78;
+      // Emotion profile resolution: Grounded in 28-dimensional GoEmotions
+      const emotionProfile = agent.psychology.emotionProfile ?? 
+        synthesizeEmotionProfileFromTraits(agent.traits, `${agent.name} ${agent.role}`);
+      const dominantEmotion: GoEmotionLabel = emotionProfile.primaryEmotion || emotionProfile.dominantEmotion || 'curiosity';
+      const emotionConf = emotionProfile.confidence ?? 0.78;
 
       // Risk score calculation
       const epState = simulationStates?.get(agent.id);
@@ -119,8 +115,8 @@ export class AdaptiveForceLayout {
       const riskScore = epState === 'BELIEVER' ? 0.85 : isP0 ? 0.95 : agent.isBridge ? 0.65 : 0.25;
       const riskLevel = riskScore >= 0.75 ? 'critical' : riskScore >= 0.5 ? 'high' : riskScore >= 0.3 ? 'moderate' : 'low';
 
-      // Default color
-      const defaultColor = agent.isInfluencer ? '#F59E0B' : commCenter.color;
+      // Real affective color from GoEmotions taxonomy
+      const nodeColor = EMOTION_COLOR_MAP[dominantEmotion] || '#38BDF8';
 
       const node: CanvasNode = {
         id: agent.id,
@@ -137,13 +133,14 @@ export class AdaptiveForceLayout {
         vy: 0,
         radius,
         baseRadius: radius,
-        color: defaultColor,
+        color: nodeColor,
         isInfluencer: agent.isInfluencer,
         isBridge: agent.isBridge,
         isPatientZero: isP0,
         state: epState,
         emotion: dominantEmotion,
         emotionConfidence: emotionConf,
+        emotionProfile,
         riskLevel,
         riskScore,
         source: 'synthetic',

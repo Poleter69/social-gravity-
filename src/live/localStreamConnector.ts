@@ -54,6 +54,22 @@ export class LocalStreamConnector implements LiveConnector {
     return this.getStatus();
   }
 
+  getHealth(): import('./types').ConnectorHealth {
+    const status = this.state.status;
+    return {
+      id: 'local',
+      platform: 'local',
+      status,
+      healthy: status === 'live' || status === 'connected',
+      latencyMs: 1,
+      lastEventAt: this.state.lastPollAt,
+      errorCount: 0,
+      successRate: 1.0,
+      itemsIngested: this.state.itemsIngested,
+      details: 'Local In-Memory Stream Ingestion',
+    };
+  }
+
   /**
    * Process posts from raw text (file or string) loaded by the analyst.
    * Accepts JSON array or JSON Lines format.

@@ -58,6 +58,22 @@ export class InstagramConnector implements LiveConnector {
     return this.getStatus();
   }
 
+  public getHealth(): import('./types').ConnectorHealth {
+    const status = this.state.status;
+    return {
+      id: 'instagram',
+      platform: 'instagram',
+      status,
+      healthy: status === 'live' || status === 'connected',
+      latencyMs: this.state.latencyMs || 25,
+      lastEventAt: this.state.lastPollAt,
+      errorCount: status === 'error' ? 1 : 0,
+      successRate: 1.0,
+      itemsIngested: this.state.itemsIngested,
+      details: 'Instagram Graph API Live Comments Ingestion',
+    };
+  }
+
   private updateStatus(status: ConnectorState['status'], extra?: Partial<ConnectorState>): void {
     this.state = { ...this.state, status, ...extra };
     this.eventHandlers.forEach(h =>

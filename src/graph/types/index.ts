@@ -5,6 +5,8 @@
  * deterministic temporal communication network.
  */
 
+import { EmotionProfile, GoEmotionLabel } from '../../nlp/types';
+
 export type RelationshipType =
   | 'peer'
   | 'hierarchical'
@@ -43,6 +45,8 @@ export interface DynamicNode {
    * Will hold multi-dimensional emotional state vector (Fear, Anger, Trust, etc.).
    */
   emotionalPlaceholder: Record<string, unknown> | null;
+  emotionProfile?: EmotionProfile;
+  dominantEmotion?: GoEmotionLabel;
 
   /** Simulation tick at which the node entered the network */
   createdTick: number;

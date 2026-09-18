@@ -18,7 +18,8 @@ export class LODRenderer {
     canvasHeight: number,
     cameraX: number,
     cameraY: number,
-    cameraScale: number
+    cameraScale: number,
+    isLight: boolean = false
   ): void {
     ctx.save();
     // Grid in screen space for maximum crispness and zero scaling jitter
@@ -26,7 +27,7 @@ export class LODRenderer {
     const offsetX = ((cameraX % step) + step) % step;
     const offsetY = ((cameraY % step) + step) % step;
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.035)';
+    ctx.fillStyle = isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.035)';
     for (let x = offsetX; x < canvasWidth; x += step) {
       for (let y = offsetY; y < canvasHeight; y += step) {
         ctx.fillRect(x, y, 1.2, 1.2);
@@ -39,7 +40,7 @@ export class LODRenderer {
       const macroOffsetX = ((cameraX % macroStep) + macroStep) % macroStep;
       const macroOffsetY = ((cameraY % macroStep) + macroStep) % macroStep;
 
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.strokeStyle = isLight ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.05)';
       ctx.lineWidth = 1;
       for (let mx = macroOffsetX; mx < canvasWidth; mx += macroStep) {
         for (let my = macroOffsetY; my < canvasHeight; my += macroStep) {
@@ -110,10 +111,12 @@ export class LODRenderer {
     selectedNodeId: string | null,
     hoveredNodeId: string | null,
     focusNarrativeNodeIds: Set<string> | null,
+    activeSafetyCategories: Set<string> | null,
     zoomScale: number,
     pulseTick: number
   ): void {
     const isFocusActive = focusNarrativeNodeIds !== null && focusNarrativeNodeIds.size > 0;
+    const isSafetyFilterActive = activeSafetyCategories !== null && activeSafetyCategories.size > 0;
     const isZoomedOut = zoomScale < 0.6;
     const isCloseZoom = zoomScale > 1.8;
 
@@ -125,11 +128,20 @@ export class LODRenderer {
       const isHovered = hoveredNodeId === node.id;
       const nodeColor = HeatmapRenderer.getNodeColorForMode(node, viewMode);
 
-      // Check narrative focus dimming
+      // Check narrative focus dimming & M20 safety highlight mode
       let alpha = 1.0;
       if (isFocusActive) {
         const inFocus = focusNarrativeNodeIds.has(node.id);
         alpha = inFocus ? 1.0 : 0.12; // 15% opacity per specification
+      }
+
+      if (isSafetyFilterActive) {
+        const matchesSafety = node.safety && activeSafetyCategories.has(node.safety.category);
+        if (matchesSafety) {
+          alpha = 1.0;
+        } else {
+          alpha = Math.min(alpha, 0.15); // Stage 5: Dim unrelated nodes
+        }
       }
 
       // Live entrance growth animation
@@ -139,13 +151,21 @@ export class LODRenderer {
       ctx.save();
       ctx.globalAlpha = alpha;
 
-      // 1. Soft Ambient Glow Halo (Stage 14: Visual Polish)
-      if (node.isInfluencer || node.isPatientZero || isSelected || isHovered || (viewMode === 'risk' && node.riskLevel === 'critical')) {
+      // 1. Soft Ambient Glow Halo (Stage 14 & M21.2: Visual Polish & Emotional Resonance)
+      if (
+        node.isInfluencer || 
+        node.isPatientZero || 
+        isSelected || 
+        isHovered || 
+        viewMode === 'emotion' ||
+        (node.pulseTimer && node.pulseTimer > 0) ||
+        (viewMode === 'risk' && node.riskLevel === 'critical')
+      ) {
         const haloRadius = effectiveRadius + (isSelected ? 9 : 6) + Math.sin(pulseTick * 0.05) * 1.5;
         const glowGrad = ctx.createRadialGradient(node.x, node.y, effectiveRadius * 0.5, node.x, node.y, haloRadius);
         const glowColor = isSelected ? '0, 240, 255' : node.isPatientZero ? '239, 68, 68' : nodeColor.startsWith('#') ? hexToRgb(nodeColor) : '245, 158, 11';
 
-        glowGrad.addColorStop(0, `rgba(${glowColor}, 0.45)`);
+        glowGrad.addColorStop(0, `rgba(${glowColor}, ${isSelected ? 0.6 : 0.42})`);
         glowGrad.addColorStop(1, `rgba(${glowColor}, 0)`);
 
         ctx.fillStyle = glowGrad;
@@ -180,6 +200,42 @@ export class LODRenderer {
         ctx.setLineDash([]);
       }
 
+      // 3b. M20 Safety Indicator Outlines & Icons (Stage 4)
+      if (node.safety && node.safety.category !== 'none') {
+        if (node.safety.category === 'explicit') {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, effectiveRadius + 3.5, 0, Math.PI * 2);
+          ctx.strokeStyle = '#A855F7';
+          ctx.lineWidth = 2.0;
+          ctx.stroke();
+
+          // Eye indicator dot
+          ctx.fillStyle = '#A855F7';
+          ctx.beginPath();
+          ctx.arc(node.x + effectiveRadius * 0.7, node.y - effectiveRadius * 0.7, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (node.safety.category === 'terrorism') {
+          const pulseOffset = Math.sin(pulseTick * 0.12) * 1.5;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, effectiveRadius + 3.0 + pulseOffset, 0, Math.PI * 2);
+          ctx.strokeStyle = '#F59E0B';
+          ctx.lineWidth = 2.0;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, effectiveRadius + 5.5 + pulseOffset, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Shield alert dot
+          ctx.fillStyle = '#EF4444';
+          ctx.beginPath();
+          ctx.arc(node.x + effectiveRadius * 0.7, node.y - effectiveRadius * 0.7, 4.0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       // 4. Main Node Body with Soft Radial Gradient
       const nodeGrad = ctx.createRadialGradient(
         node.x - effectiveRadius * 0.3,
@@ -202,13 +258,31 @@ export class LODRenderer {
       ctx.lineWidth = 0.8;
       ctx.stroke();
 
-      // 5. Close Zoom: Confidence Ring & Affect Badge (Stage 4 & Stage 14)
-      if (isCloseZoom && node.emotionConfidence > 0) {
+      // 5. Confidence Ring (Phase 6: Multi-tier Confidence Arc & Visual Calibration)
+      if (!isZoomedOut && node.emotionConfidence > 0) {
+        const conf = node.emotionConfidence;
+        let ringLineWidth = 1.2;
+        let ringAlpha = 0.55;
+
+        if (conf >= 0.61) {
+          // High confidence: prominent, crisp ring
+          ringLineWidth = isCloseZoom ? 2.4 : 1.8;
+          ringAlpha = 0.85;
+        } else if (conf >= 0.31) {
+          // Medium confidence: standard ring
+          ringLineWidth = isCloseZoom ? 1.5 : 1.2;
+          ringAlpha = 0.55;
+        } else {
+          // Low confidence: faint, thin ring
+          ringLineWidth = 0.8;
+          ringAlpha = 0.30;
+        }
+
         ctx.beginPath();
-        const confAngle = node.emotionConfidence * Math.PI * 2;
+        const confAngle = conf * Math.PI * 2;
         ctx.arc(node.x, node.y, effectiveRadius + 2.5, -Math.PI / 2, -Math.PI / 2 + confAngle);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${ringAlpha})`;
+        ctx.lineWidth = ringLineWidth;
         ctx.stroke();
       }
 

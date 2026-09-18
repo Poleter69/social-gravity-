@@ -1,0 +1,11 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https: wss://jetstream1.us-east.bsky.network wss://jetstream2.us-east.bsky.network wss://jetstream1.us-west.bsky.network wss://jetstream2.us-west.bsky.network http://localhost:11434; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:;
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -6,6 +6,7 @@ export * from './theme';
 export * from './components/MetricCard';
 export * from './components/EmotionCapsule';
 export * from './components/Sidebar';
+export * from './components/SurfaceCard';
 export * from './components/CommandBar';
 export * from './components/OperationsDock';
 export * from './components/CommandPaletteModal';

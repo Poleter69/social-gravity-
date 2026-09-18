@@ -39,9 +39,14 @@ export interface EclipseAppShellProps {
   simSpeedMs: number;
   onTogglePlay: () => void;
   onStepForward: () => void;
+  onRestart?: () => void;
   onReset: () => void;
   onScrubToRound: (round: number) => void;
   onSimSpeedChange: (speed: number) => void;
+  maxRecordedRound?: number;
+  playbackState?: string;
+  lastTickMs?: number;
+  isLoopActive?: boolean;
   onDatasetLoaded: (result: LoadedDatasetResult) => void;
   onRunValidation: () => void;
   validationReport: any;
@@ -64,6 +69,7 @@ export interface EclipseAppShellProps {
   onResynthesize?: () => void;
   onSelectHoax?: (hoax: any) => void;
   onSelectSeedStrategy?: (strategy: any) => void;
+  onReopenLanding?: () => void;
 }
 
 export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
@@ -74,9 +80,14 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
   simSpeedMs,
   onTogglePlay,
   onStepForward,
+  onRestart,
   onReset,
   onScrubToRound,
   onSimSpeedChange,
+  maxRecordedRound: propMaxRecordedRound,
+  playbackState = 'idle',
+  lastTickMs = 0,
+  isLoopActive = false,
   onDatasetLoaded,
   onRunValidation,
   validationReport,
@@ -96,6 +107,7 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
   onRiskToleranceBiasChange,
   liveDynamicDecay,
   onToggleDynamicDecay,
+  onReopenLanding,
 }) => {
   // Active Workspace Navigation
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspaceDestination>('mission');
@@ -156,7 +168,7 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
   };
 
   const currentRound = simState ? simState.currentRound : 0;
-  const maxRecordedRound = engine ? engine.getMaxRecordedRound() : 0;
+  const maxRecordedRound = propMaxRecordedRound ?? (engine ? engine.getMaxRecordedRound() : 0);
 
   const workspaceNames: Record<WorkspaceDestination, string> = {
     mission: 'MISSION CONTROL',
@@ -168,7 +180,10 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-[#09090B] text-[#FAFAFA] font-sans select-none antialiased">
+    <div
+      className="h-screen w-screen overflow-hidden flex font-sans select-none antialiased"
+      style={{ background: 'var(--bg)', color: 'var(--text)' }}
+    >
       {/* 1. Left Expandable Sidebar (72px -> 240px) */}
       <Sidebar
         currentWorkspace={currentWorkspace}
@@ -272,6 +287,13 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
                   }}
                   isPlaying={isPlaying}
                   onTogglePlay={onTogglePlay}
+                  onStepForward={onStepForward}
+                  onRestart={onRestart}
+                  playbackState={playbackState}
+                  lastTickMs={lastTickMs}
+                  isLoopActive={isLoopActive}
+                  simSpeedMs={simSpeedMs}
+                  onSimSpeedChange={onSimSpeedChange}
                 />
               </motion.div>
             )}
@@ -337,6 +359,9 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
           }}
           onInjectDebunk={onInjectDebunk}
           canInjectDebunk={Boolean(simState && simState.status === 'running')}
+          playbackState={playbackState}
+          isLoopActive={isLoopActive}
+          lastTickMs={lastTickMs}
         />
       </div>
 
@@ -361,6 +386,7 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
         onRunDiscovery={onRunDiscovery}
         onRunValidation={onRunValidation}
         onInjectDebunk={onInjectDebunk}
+        onReopenLanding={onReopenLanding}
       />
 
       {/* 2. System Settings */}
@@ -376,6 +402,7 @@ export const EclipseAppShell: React.FC<EclipseAppShellProps> = ({
         onRunValidation={onRunValidation}
         liveDynamicDecay={liveDynamicDecay}
         onToggleDynamicDecay={onToggleDynamicDecay}
+        onReopenLanding={onReopenLanding}
       />
 
       {/* 3. Invariant Validation Modal */}

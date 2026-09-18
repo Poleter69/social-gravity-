@@ -1,229 +1,266 @@
-# Social Gravity
+# Social Gravity — Computational Social Psychology Engine
 
-> Offline-first Decision Intelligence Operating System for modeling information contagion.
+> **A zero-cost, open-source decision intelligence engine for simulating, analyzing, and inoculating against information contagion, echo-chamber polarization, and viral rumor cascades.**
 
-* **Real Reddit/Facebook ingestion** — Stanford SNAP Facebook ego-networks & Reddit conversation tree parsers.
-* **Replay & Counterfactual Simulation** — 100% deterministic SplitMix32 PRNG engine with 3-way branching intervention analysis.
-* **GoEmotions-powered Emotion Intelligence** — Continuous 27-class affective valence & arousal modeling via local ONNX/WASM inference.
-* **Live Connectors** — Streaming intelligence ingestion (Bluesky Firehose, RSS, JSON streams) with sliding-window deduplication.
-* **Tauri Desktop App** — Air-gapped, zero-telemetry native desktop client for Windows, macOS, and Linux.
-
-**Live Demo:** [https://social-gravity.pages.dev](https://social-gravity.pages.dev)  
-**Download Desktop Release:** [GitHub Releases (v2.0.0-beta)](https://github.com/your-org/social-gravity/releases)
-
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6%20(Strict)-blue.svg)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.4-purple.svg)](https://vitejs.dev/)
-[![Tauri](https://img.shields.io/badge/Tauri-1.x%20(Rust)-orange.svg)](https://tauri.app/)
-[![Tests](https://img.shields.io/badge/Tests-20%2F20%20Passing%20(100%25)-emerald.svg)]()
-[![Validation](https://img.shields.io/badge/Validation-v2.0.0--beta%20Certified-brightgreen.svg)]()
-[![Architecture](https://img.shields.io/badge/Architecture-Offline--First%20%7C%20Zero--Telemetry-amber.svg)]()
-[![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)]()
+[![Zero-Cost Production](https://img.shields.io/badge/Cost-$0.00%2Fmonth-brightgreen.svg)](#zero-cost-production-budget)
+[![CI/CD Pipeline](https://github.com/Poleter69/social-gravity-/actions/workflows/ci.yml/badge.svg)](https://github.com/Poleter69/social-gravity-/actions/workflows/ci.yml)
+[![Cloudflare Pages](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020.svg?logo=cloudflare)](https://pages.cloudflare.com/)
+[![GitHub Pages](https://img.shields.io/badge/Deploy-GitHub%20Pages-222222.svg?logo=github)](https://pages.github.com/)
+[![Supabase Free Tier](https://img.shields.io/badge/Database-Supabase%20Free-3ECF8E.svg?logo=supabase)](https://supabase.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6%20(Strict)-3178C6.svg?logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF.svg?logo=vite)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4.svg?logo=tailwindcss)](https://tailwindcss.com/)
+[![Tests](https://img.shields.io/badge/Master%20Test%20Suite-100%25%20Passing-emerald.svg)](tests/runAll.ts)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 1. Simulation Preview
+## 1. Executive Summary & The Zero-Cost Rule
 
-```
-+----------------------------------------------------------------------------------------------------+
-| SOCIAL GRAVITY WORKSTATION — ROUND 4 [TICK: 4 / HORIZON: 10]                      [STATUS: ACTIVE] |
-+----------------------------------------------------------------------------------------------------+
-| Topology: Core-Periphery (1,000 Nodes, 2,792 Edges)          | Reproductive Ratio R0: 1.84 (PEAK)   |
-| Belief Distribution:  [■■■■■■■■░░░░░░░░░░░░] 38.2% Believers | Latency: 10.96 ms / round            |
-| Emotion Driver:       Fear (Valence: -0.72, Arousal: 0.88)   | Containment Efficiency: 82.5%        |
-+----------------------------------------------------------------------------------------------------+
-|  [O] Key Opinion Leader (KOL) ====(high-arousal trigger)====> [O] Bridge Broker                     |
-|         |                                                           |                               |
-|         v                                                           v                               |
-|   Cluster A (High Conformity)                                 Cluster B (Low Institutional Trust)   |
-|   Believers: 142/250 (56.8%)                                  Believers: 189/300 (63.0%)            |
-|                                                                                                     |
-|  >>> RECOMMENDED PARETO INTERVENTION: Bridge Inoculation on Agent-0001 & Agent-0015                 |
-+----------------------------------------------------------------------------------------------------+
-```
+**Social Gravity** transforms high-level social network theory (Asch conformity, Granovetter threshold models, dual-process cognitive deliberation) into an interactive, real-time computational sandbox. It enables researchers, intelligence analysts, and open-source investigators to model how rumors propagate, identify super-spreader nodes, detect algorithmic echo chambers, and discover mathematically optimal counter-interventions.
 
-> **Live Interactive Preview**: Visit [social-gravity.pages.dev](https://social-gravity.pages.dev) to interact with live force-directed network rendering, real-time emotion telemetry, 3-way counterfactual branching, and instant PDF brief compilation.
+### The Primary Architectural Invariant: Zero-Cost Production
+**Every architectural decision prioritizes free, production-usable infrastructure ($0.00/month).**
+- **Zero Mandatory Paid Services**: Never requires OpenAI API keys, paid social data licenses (like X's paid API), or paid cloud compute.
+- **Client & Edge Native**: Heavy neural classification runs on the client via **Transformers.js** (WebGPU/WebAssembly ONNX) or locally via **Ollama**.
+- **Free Live Ingestion**: Leverages open federated protocols (**Bluesky AT Protocol Jetstream**, **Mastodon ActivityPub**, **Reddit Public JSON**, **Global RSS**, and **GitHub Public Events**).
+- **Serverless & Sleep-Safe**: Deploys to **Cloudflare Pages** and **GitHub Pages** with auto-scaling to zero and instant waking.
 
 ---
 
-## 2. Architecture Diagram
+## 2. Zero-Cost Production Budget ($0.00 / Month)
 
-```
-+----------------------------------------------------------------------------------------------------+
-|                                    SOCIAL GRAVITY WORKSTATION                                      |
-+----------------------------------------------------------------------------------------------------+
-|  [Ingestion & Adapters]       [Affective NLP (GoEmotions)]    [Simulation & Decision Physics]      |
-|  - Stanford SNAP Facebook     - Google GoEmotions (WASM)      - Dual-Process Cognitive Engine      |
-|  - Reddit Tree Ingestion      - 27-Class Circumplex Map       - SplitMix32 PRNG Determinism        |
-|  - Live Connectors (BSky/RSS) - Continuous Valence & Arousal  - Dynamic Tie Decay & Triadic Closure|
-|  - 5 Multi-Domain Adapters    - 100% In-Memory / Zero Cloud   - Asch Conformity & Risk Tolerance   |
-+-------------------------------+-------------------------------+------------------------------------+
-|  [Graph Learning & AI]        [Explainable Dossier Engine]    [Desktop Sandboxing & Packaging]     |
-|  - On-Device Node2Vec (SGNS)  - Causal Chain Reconstruction   - Tauri (Rust) Scoped File Sandbox   |
-|  - Rolling 6-Tick Forecasts   - Brokerage Impact Scoring      - Strict CSP (Zero-Cloud / No CDN)   |
-|  - Continuous Holdout Drift   - Multi-Candidate Pareto Search - Printable PDF & Multi-CSV Exports  |
-+----------------------------------------------------------------------------------------------------+
-```
-
-### 2.1 Dynamic Graph & Network Physics
-Social Gravity models evolving graphs $G(t) = (V(t), E(t), W(t))$ with exponential tie decay and triadic closure:
-$$w_{ij}(t+1) = w_{ij}(t) \cdot (1 - \lambda) + \delta \cdot \mathbb{I}_{\text{interaction}}(i, j, t)$$
-$$P(\text{closure}(i, j)) = 1 - \prod_{k \in \Gamma(i) \cap \Gamma(j)} (1 - c_{ik} \cdot c_{kj})$$
-
-### 2.2 Dual-Process Cognitive Adoption
-Adoption probability synthesizes fast affective reflex (System 1) and deliberative peer utility (System 2):
-- **System 1 (Affective Resonance)**: Modulated by GoEmotions continuous $(V_m, A_m)$ valence/arousal vectors:
-  $$\alpha_i(m) = A_m^2 \cdot (1 - \text{Trust}_i) + |V_m - \text{PriorSentiment}_i| \cdot \text{Conformity}_i$$
-- **System 2 (Rational Utility & Asch Conformity)**:
-  $$\sigma_i(t) = \frac{1}{1 + \exp(-\kappa \cdot (\beta_i(t) - \Theta_i))}$$
-  where $\Theta_i = (1 - \text{Conformity}_i) \cdot (1 - \text{RiskTolerance}_i)$ is the individual Asch threshold.
+| Infrastructure Component | Service Provider | Free-Tier Allocation | Monthly Cost |
+|---|---|---|---|
+| **Web Hosting & CDN** | Cloudflare Pages / GitHub Pages | Unlimited bandwidth, worldwide edge CDN | **$0.00** |
+| **Edge Serverless Compute** | Cloudflare Pages Functions | 100,000 requests/day, 10ms CPU per request | **$0.00** |
+| **Relational Database** | Supabase Free / Neon Serverless | 500MB PostgreSQL, unlimited PostgREST reads | **$0.00** |
+| **Authentication** | Supabase Auth (GitHub & Google OAuth) | 50,000 Monthly Active Users (MAU) | **$0.00** |
+| **Object Storage** | Supabase Storage / Client Vault | 1GB cloud bucket + unlimited IndexedDB | **$0.00** |
+| **AI Emotion Inference** | Transformers.js (GoEmotions ONNX) | Client-side CPU/WebGPU browser execution | **$0.00** |
+| **Deep Qualitative AI** | Local Ollama (`llama3.2:3b` on host) | 100% free local host compute | **$0.00** |
+| **Social Data Streams** | AT Protocol, ActivityPub, RSS, GitHub | Free public APIs, WebSockets & RSS feeds | **$0.00** |
+| **CI/CD Automation** | GitHub Actions | 2,000 runner minutes/month | **$0.00** |
+| **Health Monitoring** | UptimeRobot Free + Cloudflare Analytics | 50 HTTP monitors, 5-min intervals, zero-cookie telemetry | **$0.00** |
+| **Total Monthly Cost** | | **Full Production Deployment** | **$0.00 / month** |
 
 ---
 
-## 3. Performance & Empirical Scaling Table
+## 3. Architecture Overview
 
-Conducted on Node.js v24.14.1 / V8 on Windows 64-bit (100% deterministic):
+```mermaid
+flowchart TD
+    subgraph Client ["Client Layer (Browser / Desktop) - $0.00"]
+        UI["React 18 + TypeScript + Tailwind CSS\n(Eclipse & Aurora UI Systems)"]
+        Canvas["Multi-LOD Network Canvas\n(5,000+ Agents @ 60 FPS)"]
+        LocalNLP["Transformers.js (Google GoEmotions ONNX)\n(28 Emotion Dimensions in WebAssembly)"]
+        ClientVault["IndexedDB Transactional Vault\n(Full Offline Parity)"]
+    end
 
-| Nodes | Edges | Graph Gen (ms) | 5-Tick Sim (ms) | Throughput (ms/tick) | Resident Heap | Replay Compr. % |
-|---:|---:|---:|---:|---:|---:|---:|
-| **100** | 271 | 4.75 | 5.80 | **1.16 ms** | 10.19 MB | 10.7% |
-| **500** | 1,393 | 28.49 | 15.43 | **3.09 ms** | 14.25 MB | 11.3% |
-| **1,000** | 2,792 | 46.64 | 54.80 | **10.96 ms** | 23.55 MB | 11.3% |
-| **5,000** | 13,989 | 348.62 | 404.59 | **80.92 ms** | 35.09 MB | 10.3% |
-| **10,000** | 27,985 | 745.37 | 958.47 | **191.69 ms** | 134.26 MB | 11.7% |
+    subgraph Edge ["Serverless Edge (Cloudflare Pages / Workers) - $0.00"]
+        MW["Edge Middleware & Rate Limiter\n(120 req/min per IP)"]
+        Proxies["CORS & Protocol Proxies\n(/api/social/*, /api/health)"]
+    end
 
-*1,000-node networks execute in real-time at over 90 rounds/sec; 10,000-node networks remain sub-second per round.*
+    subgraph CloudDB ["Free Cloud Database & Identity - $0.00"]
+        SupaDB["Supabase PostgreSQL (Free Tier)\n+ PostgREST API + Row Level Security"]
+        OAuth["GitHub OAuth / Google OAuth\n(50,000 MAU Free)"]
+    end
 
-### Predictive Calibration (50 Monte Carlo Trials)
-| Metric Target | Observed Value | Description |
-|:---|:---:|:---|
-| **Adoption Fraction MAE** | `0.1650` | Mean Absolute Error across all network topologies |
-| **Adoption Fraction RMSE** | `0.2081` | Root Mean Square Error of final adoption fraction |
-| **Peak $R_0$ MAE** | `0.7180` | Reproductive ratio tracking precision |
-| **Outbreak Recall** | `100.0%` | Zero missed runaway cascades ($R_0 \ge 1.5$, Adoption $\ge 20\%$) |
-| **Brier Calibration Score** | `0.0673` | Quadratic divergence from true probabilistic outcome ($<0.10$ = Exceptional) |
+    subgraph SocialData ["Zero-Cost Live Signal Streams - $0.00"]
+        Bsky["Bluesky Jetstream\n(Public WebSocket Firehose)"]
+        Masto["Mastodon Federated Timelines\n(Public ActivityPub Instances)"]
+        Reddit["Reddit Public JSON\n(r/all, r/technology, r/news)"]
+        RSS["Global News Feeds\n(BBC, NPR, Hacker News, NYT)"]
+        GH["GitHub Public Events API\n(Commits, PRs, Issue Debates)"]
+    end
+
+    subgraph LocalAI ["Local Machine AI Host - $0.00"]
+        Ollama["Ollama Daemon (localhost:11434)\n(Llama 3.2 3B / Mistral Local Models)"]
+    end
+
+    UI --> Canvas
+    UI --> LocalNLP
+    UI --> ClientVault
+    UI --> MW
+    MW --> Proxies
+    Proxies --> SocialData
+    MW --> SupaDB
+    UI --> OAuth
+    UI -.-> Ollama
+    ClientVault -.-> SupaDB
+```
 
 ---
 
-## 4. Quick Start
+## 4. Key Capabilities
 
-### 4.1 Web Workstation (Fastest)
+### 🔬 Empirical Social Contagion & Inoculation Physics
+- **Dual-Process Cognitive Model**: Synthesizes fast affective reflex (System 1 emotion) and deliberative utility (System 2 rational scrutiny).
+- **Asch Conformity Dynamics**: Dynamic social pressure functions with heterogeneous individual conformity thresholds.
+- **Epidemic Contagion**: Continuous calculation of Basic Reproduction Number ($R_0$), Echo-Chamber Polarization Index, and Network Entropy.
+- **Bitwise Determinism**: Seeded PRNG (`mulberry32`) ensures 100% test reproducibility across simulations and time-travel timeline scrubbing.
 
+### 🌐 Open Social Data Streams (Zero Paywalls)
+- **Bluesky Firehose**: Sub-second AT Protocol Jetstream ingestion.
+- **Mastodon Fediverse**: Decentralized ActivityPub timelines across public instances (`mastodon.social`, `hachyderm.io`, `fosstodon.org`).
+- **Reddit Ingestion**: Real-time hierarchical conversation tree reconstruction and sentiment profiling.
+- **Global RSS Feeds**: Syndicated international news monitoring with HTTP 304 ETag caching.
+- **GitHub Public Events**: Collaborative developer activity and open-source technical consensus tracking.
+
+### 🧠 Free Neural AI Inference Hierarchy
+- **Tier 1 (In-Browser ONNX)**: Runs `@xenova/transformers` with Google's GoEmotions model directly in the browser using WebAssembly and WebGPU.
+- **Tier 2 (Local Ollama)**: Connects to local `http://localhost:11434` for deep qualitative intelligence synthesis (Llama 3.2 3B).
+- **Tier 3 (Hugging Face Free)**: Free serverless inference via public community endpoints.
+- **Tier 4 (Deterministic Heuristic Fallback)**: Empirical Bayes calculations that work 100% offline with zero network connectivity.
+
+### 🛡️ Intelligence Dossiers & Verifiable Evidence
+- **Cryptographic Tamper-Sealing**: Generates SHA-256 sealed intelligence briefs with replay hashes.
+- **Standalone Offline HTML Reports**: Exports interactive, self-contained HTML dossiers that open in any browser without internet access.
+- **Collaborative Investigation Vault**: Multi-analyst bookmarks, node annotations, and evidence pinning.
+
+---
+
+## 5. One-Command Local Setup
+
+Get up and running locally in 60 seconds with zero manual configuration:
+
+### Cross-Platform Setup (Node.js 18+)
 ```bash
-# 1. Clone repository
 git clone https://github.com/your-org/social-gravity.git
-cd "social gravity"
+cd social-gravity
+npm run setup
+```
 
-# 2. Install dependencies
-npm install
+### Or using OS-specific scripts:
+- **macOS / Linux**: `./setup.sh`
+- **Windows**: `setup.bat`
 
-# 3. Start local development workstation
+### Launch Development Server:
+```bash
 npm run dev
 ```
-Open `http://localhost:5173` in your browser.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### 4.2 Verify Build & Run Tests
-
+### Seed Database (Benchmark Scenarios):
 ```bash
-# Run master test suite (all 20 test modules)
+npm run db:seed
+```
+
+### Run Master System Test Suite:
+```bash
 npm test
-
-# Build production client bundle
-npm run build
 ```
 
-### 4.3 Ingest Real Datasets
+---
 
-```bash
-# Inspect Stanford SNAP Facebook Ego-Networks
-npm run inspect:facebook
+## 6. One-Click Production Deployment
 
-# Ingest and report Facebook topology
-npm run import:facebook
-npm run report:facebook
+### Option 1: Cloudflare Pages (Recommended)
+1. Fork or push this repository to your GitHub account.
+2. Sign in to [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** -> **Create application** -> **Pages**.
+3. Connect your GitHub repository.
+4. Set Build Command: `npm run build` and Output Directory: `dist`.
+5. Click **Deploy**. Your app is live with global edge caching and free SSL at `https://social-gravity.pages.dev`!
 
-# Ingest Reddit discussion trees
-npm run reddit:collect
-npm run reddit:report
+### Option 2: GitHub Pages (100% Free on GitHub)
+1. In your GitHub repository, go to **Settings** -> **Pages**.
+2. Under **Build and deployment** -> **Source**, select **GitHub Actions**.
+3. Push to `main`. The included workflow [`.github/workflows/deploy-github-pages.yml`](.github/workflows/deploy-github-pages.yml) automatically builds and publishes the production app!
+
+### Option 3: Vercel Free Tier
+Import the repository into [Vercel](https://vercel.com). The included [`vercel.json`](vercel.json) automatically handles static building and edge route rewrites.
+
+---
+
+## 7. Connecting Free Cloud Services (Optional)
+
+The application works 100% in-browser with zero keys. To connect free cloud databases or auth:
+
+1. Copy [`.env.example`](.env.example) to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. **Supabase Free Tier**:
+   - Create a free project at [supabase.com](https://supabase.com).
+   - Run [`db/schema.sql`](db/schema.sql) and [`db/migrations/002_row_level_security.sql`](db/migrations/002_row_level_security.sql) in Supabase SQL Editor.
+   - Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your `.env`.
+3. **Local Ollama LLM**:
+   - Install Ollama from [ollama.ai](https://ollama.ai) and run `ollama run llama3.2:3b`.
+   - The app automatically detects Ollama on `http://localhost:11434`.
+
+---
+
+## 8. Repository Structure
+
+```
+social-gravity/
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml                     # Strict CI: type-check, test, build
+│   │   ├── deploy-cloudflare.yml      # Automated Cloudflare Pages deployment
+│   │   ├── deploy-github-pages.yml    # 100% Free GitHub Pages deployment
+│   │   ├── security-scan.yml          # CodeQL & secret vulnerability scanning
+│   │   └── db-backup.yml              # Weekly automated zero-cost database backup
+│   ├── ISSUE_TEMPLATE/                # Bug reports & feature request templates
+│   └── PULL_REQUEST_TEMPLATE.md       # PR checklist with zero-cost compliance
+├── db/
+│   ├── schema.sql                     # PostgreSQL schema (Supabase / Neon)
+│   ├── turso_schema.sql               # libSQL / SQLite schema (Turso)
+│   ├── migrations/                    # Sequential SQL migrations (001, 002, 003)
+│   └── seeds/                         # Benchmark scenarios seed SQL
+├── docs/
+│   ├── ARCHITECTURE.md                # C4 system diagrams & engine internals
+│   ├── ZERO_COST_DEPLOYMENT_GUIDE.md  # Step-by-step tutorials for free hosting
+│   ├── DATABASE_SCHEMA.md             # Entity relationships & data dictionary
+│   ├── DATABASE_BACKUP_STRATEGY.md    # Automated zero-cost backup playbook
+│   ├── SOCIAL_DATA_STRATEGY.md        # Open protocols & rate limit mitigation
+│   ├── AI_MODELS_GUIDE.md             # Transformers.js, Ollama & free inference
+│   └── SECURITY_AND_MONITORING.md     # CSP, rate limiting & UptimeRobot setup
+├── functions/                         # Cloudflare Pages Functions (Edge Serverless)
+│   └── api/
+│       ├── _middleware.ts             # Security headers & edge rate limiter
+│       ├── health.ts                  # Public health probe (/api/health)
+│       ├── social/                    # Free proxies for Mastodon, GitHub, Reddit, RSS
+│       ├── ai/                        # Hugging Face free tier proxy
+│       └── db/                        # Edge telemetry synchronization
+├── public/
+│   ├── _headers                       # Cloudflare Pages CSP & HSTS headers
+│   └── _routes.json                   # Cloudflare edge routing configuration
+├── scripts/
+│   ├── setup.js                       # Cross-platform one-command setup wizard
+│   └── seed.ts                        # Zero-cost database seed runner
+├── src/
+│   ├── auth/                          # Supabase Auth, GitHub OAuth & local session
+│   ├── db/                            # ZeroCostDatabase (Supabase, Neon, IndexedDB)
+│   ├── storage/                       # ZeroCostStorage (Supabase, R2, client vault)
+│   ├── live/                          # Bluesky, Mastodon, Reddit, RSS, GitHub connectors
+│   ├── nlp/                           # Transformers.js GoEmotions engine
+│   ├── graph/                         # Dynamic network metrics & replay physics
+│   ├── simulation/                    # Rumor contagion & playback controller
+│   └── ui/                            # Eclipse & Aurora workstation shells
+├── tests/                             # Master test suite (100% deterministic)
+├── .env.example                       # Complete annotated environment configuration
+├── CONTRIBUTING.md                    # Open-source contribution guidelines
+├── LICENSE                            # MIT License
+├── package.json                       # Scripts, dependencies & build tools
+└── wrangler.toml                      # Cloudflare Pages / Workers configuration
 ```
 
-### 4.4 Desktop App Packaging (Tauri)
-
-```bash
-# Compile native desktop installer (.msi / .exe on Windows, .dmg on macOS, .AppImage on Linux)
-npm run build
-npx tauri build
-```
-Built binaries are placed in `src-tauri/target/release/bundle/`.
-
 ---
 
-## 5. Real-World Case Studies Validated
+## 9. Citations & Academic Foundation
 
-1. **2020 5G-COVID Cellular Panic**:
-   - Reconstructed 100-node modular community with low institutional trust ($0.42$) and high peer conformity ($0.72$).
-   - Targeted bridge node inoculation achieved **91.2% containment efficiency** over broad debunking.
-2. **2023 Silicon Valley Bank Digital Run**:
-   - Reconstructed 120-node core-periphery venture network with extreme loss aversion ($0.25$).
-   - Simulation captured the phase-transition run within 36 hours; message velocity throttling reduced peak panic by **64.7%**.
-3. **2022 AI Synthetic Audio Corporate Extortion**:
-   - High-arousal negative emotion ($A=0.88, V=-0.75$) bypassed rational filters; demonstrated necessity of prebunking.
-4. **2024 Voting Tabulator Rumor Incident**:
-   - Modeled institutional debunking failures in low-trust ($T < 0.30$) sub-clusters; proved trust-bounded reception dynamics.
-
-*(Detailed dossiers available in `V2_REAL_WORLD_CASE_STUDIES.txt`)*.
-
----
-
-## 6. Multi-Domain Operational Adapters
-
-Social Gravity v2.0 introduces 5 pluggable domain intelligence profiles:
-- **Financial Panic & Depositor Contagion**: Core-periphery liquidity networks, panic arousal triggers, counter-voice interventions.
-- **Cybersecurity & Zero-Day Escalation**: Scale-free infrastructure graphs, exploit weaponization velocity, isolation protocols.
-- **Civil Emergency & Evacuation**: Spatial grid topologies, evacuation compliance, emergency broadcast overrides.
-- **Enterprise & Organizational Rumor**: Hierarchical corporate networks, M&A anxiety dampening, verified memo distribution.
-- **Supply Chain Disruption**: Bipartite dependency graphs, panic hoarding cascades, critical inventory allocation.
-
----
-
-## 7. Security & Penetration Certification
-
-Automated testing via `tests/security/penetrationTest.ts` subjects Social Gravity to enterprise red-team vectors:
-- **Cross-Site Scripting (XSS)**: 6/6 injection vectors neutralized via DOMPurify and strict HTML entity encoding.
-- **Denial-of-Service (DoS)**: 50,000-line malformed inputs, truncated rows, and null bytes rejected safely without memory leaks.
-- **PII Scrubbing**: Built-in regex scrubbers mask IPv4/IPv6 addresses, emails, and phone numbers in all generated intelligence briefs.
-- **Air-Gapped Operation**: Scoped Tauri permissions, strict Content Security Policy, zero external CDNs, and zero outbound network telemetry.
-
----
-
-## 8. Master Documentation Index
-
-All technical reports, academic manuscripts, and verification logs are persisted in the repository:
-- [`README.md`](file:///README.md): Master system guide.
-- [`CHANGELOG.md`](file:///CHANGELOG.md): SemVer release history.
-- [`INSTALLATION_GUIDE.txt`](file:///INSTALLATION_GUIDE.txt): Deployment and troubleshooting guide.
-- [`V2_EVOLUTION_OUTPUT.txt`](file:///V2_EVOLUTION_OUTPUT.txt): Milestone M1-M9 execution log.
-- [`V2_EVOLUTION_MASTER_SUMMARY.txt`](file:///V2_EVOLUTION_MASTER_SUMMARY.txt): High-level feature index.
-- [`V2_REAL_WORLD_CASE_STUDIES.txt`](file:///V2_REAL_WORLD_CASE_STUDIES.txt): 4 historical crisis simulations.
-- [`V3_PREDICTION_BENCHMARK_REPORT.txt`](file:///V3_PREDICTION_BENCHMARK_REPORT.txt): 50-run Monte Carlo predictive accuracy report.
-- [`V4_RESEARCH_PAPER.txt`](file:///V4_RESEARCH_PAPER.txt) & [`RESEARCH_PAPER_DRAFT.md`](file:///RESEARCH_PAPER_DRAFT.md): Complete scientific paper manuscript.
-- [`V5_PERFORMANCE_BENCHMARK.txt`](file:///V5_PERFORMANCE_BENCHMARK.txt): 100 to 10,000 nodes stress table.
-- [`V6_SECURITY_VALIDATION_REPORT.txt`](file:///V6_SECURITY_VALIDATION_REPORT.txt): Penetration testing & PII audit.
-- [`V7_DESKTOP_RELEASE.txt`](file:///V7_DESKTOP_RELEASE.txt): Tauri desktop packaging dossier.
-- [`V8_PUBLIC_DEMONSTRATION.txt`](file:///V8_PUBLIC_DEMONSTRATION.txt): 3-min, 7-min, and 15-min briefing scripts.
-
----
-
-## 9. Citation
-
-If you use Social Gravity in academic research, defense analysis, or commercial evaluation, please cite:
+If you use Social Gravity in research, educational curricula, or policy analysis, please cite:
 
 ```bibtex
-@software{socialgravity2026,
-  author = {Antigravity AI Systems Research Group},
-  title = {Social Gravity: Decision Intelligence Operating System for Computational Social Physics},
-  version = {2.0.0-beta},
+@software{social_gravity_2026,
+  title = {Social Gravity: Computational Social Psychology Simulation Engine},
+  author = {Social Gravity Research Team},
   year = {2026},
-  url = {https://github.com/your-org/social-gravity}
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/your-org/social-gravity}}
 }
 ```
 
@@ -231,4 +268,4 @@ If you use Social Gravity in academic research, defense analysis, or commercial 
 
 ## 10. License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+Released under the [MIT License](LICENSE). Built for open science, universal accessibility, and zero-cost deployment.

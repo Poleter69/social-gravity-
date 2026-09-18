@@ -49,11 +49,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   return (
     <motion.div
-      whileHover={{ y: -1, borderColor: '#3F3F46' }}
+      whileHover={{ y: -1, borderColor: 'var(--primary)' }}
       whileTap={onClick ? { scale: 0.99 } : undefined}
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       onClick={onClick}
-      className={`relative bg-[#111114] border border-[#27272A] rounded-xl p-5 flex flex-col justify-between select-none ${
+      style={{
+        background: 'var(--surface)',
+        borderColor: 'var(--border)',
+        boxShadow: 'var(--card-shadow)',
+      }}
+      className={`relative border rounded-xl p-5 flex flex-col justify-between select-none ${
         onClick ? 'cursor-pointer' : ''
       } ${className}`}
     >
@@ -61,11 +66,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className={`w-1.5 h-1.5 rounded-full ${dotStyles} shrink-0`} />
-          <span className="text-[13px] font-medium text-[#A1A1AA] truncate tracking-[-0.01em]">
+          <span className="text-[13px] font-medium text-[var(--text-muted)] truncate tracking-[-0.01em]">
             {label}
           </span>
           {technicalLabel && (
-            <span className="text-[11px] font-mono text-[#71717A] hidden xl:inline truncate">
+            <span className="text-[11px] font-mono text-[var(--text-tertiary)] hidden xl:inline truncate">
               {technicalLabel}
             </span>
           )}
@@ -76,7 +81,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           </span>
         )}
         {icon && !badge && (
-          <div className="text-[#71717A] shrink-0">
+          <div className="text-[var(--text-tertiary)] shrink-0">
             {icon}
           </div>
         )}
@@ -84,12 +89,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Main value */}
       <div className="flex items-baseline gap-2 my-1">
-        <span className="text-[24px] leading-[30px] font-semibold text-[#FAFAFA] tracking-tight font-sans">
+        <span className="text-[24px] leading-[30px] font-semibold text-[var(--text)] tracking-tight font-sans">
           {value}
         </span>
         {trend && (
           <span className={`text-[12px] font-mono ${
-            trend.direction === 'up' ? 'text-[#EF4444]' : trend.direction === 'down' ? 'text-[#22C55E]' : 'text-[#71717A]'
+            trend.direction === 'up' ? 'text-[#EF4444]' : trend.direction === 'down' ? 'text-[#22C55E]' : 'text-[var(--text-tertiary)]'
           }`}>
             {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'} {trend.label}
           </span>
@@ -98,7 +103,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Subtitle / context note */}
       {subtitle && (
-        <p className="text-[12px] leading-[16px] text-[#71717A] truncate mt-1">
+        <p className="text-[12px] leading-[16px] text-[var(--text-tertiary)] truncate mt-1">
           {subtitle}
         </p>
       )}
