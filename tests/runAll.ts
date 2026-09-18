@@ -68,6 +68,9 @@ import { testThemeSuite } from './theme/index';
 // Project Aurora: Post-Login Landing Experience Suite
 import { testLandingExperience } from './onboarding/landingExperience.test';
 
+// Navigation Flow: About Project (/) -> Login (/login) -> Main App (/dashboard)
+import { testNavigationFlow } from './navigation/navigationFlow.test';
+
 // Milestone M22: Playback Control System Verification Suite
 import { testPlaybackSuite } from './playback/index';
 
@@ -210,6 +213,9 @@ async function run() {
 
     console.log('--- Project Aurora: Post-Login Landing Experience Suite ---');
     testLandingExperience();
+
+    console.log('\n--- Navigation Flow: About Project -> Login -> Main App Suite ---');
+    testNavigationFlow();
 
     console.log('\n--- Milestone M22: Playback Control System Verification ---');
     await testPlaybackSuite();
