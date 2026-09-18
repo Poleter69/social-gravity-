@@ -127,8 +127,8 @@ Get up and running locally in 60 seconds with zero manual configuration:
 
 ### Cross-Platform Setup (Node.js 18+)
 ```bash
-git clone https://github.com/your-org/social-gravity.git
-cd social-gravity
+git clone https://github.com/Poleter69/social-gravity-.git
+cd social-gravity-
 npm run setup
 ```
 
@@ -260,7 +260,7 @@ If you use Social Gravity in research, educational curricula, or policy analysis
   year = {2026},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{https://github.com/your-org/social-gravity}}
+  howpublished = {\url{https://github.com/Poleter69/social-gravity-}}
 }
 ```
 
