@@ -39,7 +39,8 @@ export class SupabaseAuthService {
     }
     if (typeof window === 'undefined') return;
 
-    const redirectTo = encodeURIComponent(window.location.origin);
+    const redirectBase = window.location.origin + window.location.pathname.replace(/\/login\/?$/, '/');
+    const redirectTo = encodeURIComponent(redirectBase);
     const authUrl = `${this.supabaseUrl}/auth/v1/authorize?provider=${provider}&redirect_to=${redirectTo}`;
     window.location.href = authUrl;
   }
